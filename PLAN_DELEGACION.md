@@ -1,6 +1,6 @@
 # Plan de delegación: `/tweets-nohuddle` (2026-11-09, v4)
 
-> **Cambio v4 (09/11 noche):** auditoría contra la documentación oficial de skills. La skill se invoca a mano (`disable-model-invocation`), fija `model: sonnet` y `effort: low`, y el modelo escribe un formato compacto (`id | historias | texto`) en vez de un JSON con URLs: los IDs de historia los resuelve el script. Costo medido ~4.500 tokens por corrida.
+> **Cambio v4 (09/11 noche):** auditoría contra la documentación oficial de skills. La skill se invoca a mano (`disable-model-invocation`), fija `model: sonnet` y `effort: medium`, y el modelo escribe un formato compacto (`id | historias | texto`) en vez de un JSON con URLs: los IDs de historia los resuelve el script. Costo medido ~4.500 tokens por corrida.
 >
 > **Cambio v3 (09/11 noche):** (1) los tweets **no citan fuentes** en el texto (somos un medio); (2) la lógica pasa a scripts: el `SKILL.md` queda en 2 comandos (`preparar`, `cerrar`) y el plan del día (mezcla y horarios) lo decide código.
 >

@@ -4,7 +4,7 @@ description: Arma los tweets e hilos del día para la cuenta de X de No Huddle (
 argument-hint: "[con verificación | modo profundo]"
 disable-model-invocation: true
 model: sonnet
-effort: low
+effort: medium
 allowed-tools:
   - Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/tweets.py *)
   - Bash(python ${CLAUDE_SKILL_DIR}/scripts/tweets.py *)

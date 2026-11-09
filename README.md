@@ -32,7 +32,7 @@ tweets.py cerrar     (script)
 
 **Modelo de skills de Claude Code que sigue (verificado contra la documentación oficial):**
 - `disable-model-invocation: true`: se invoca a mano, así que **su descripción no ocupa contexto en ninguna conversación**.
-- `model: sonnet` y `effort: low`: el modelo que redacta es más barato que el de la sesión; la decisión difícil ya la tomó el código.
+- `model: sonnet` y `effort: medium`: el modelo que redacta es más barato que el de la sesión; la decisión difícil ya la tomó el código.
 - `allowed-tools` con `${CLAUDE_SKILL_DIR}`: los scripts corren sin pedir permiso.
 - Divulgación progresiva: `SKILL.md` corto; la guía de estilo y las instrucciones las imprime el script en el momento justo; los modos caros están en `references/opcional/`; los scripts **se ejecutan, no se cargan** en contexto.
 - Solo funciona en **Claude Code** (los campos `model`, `effort` y `disable-model-invocation` no los acepta claude.ai ni la API de Skills).
