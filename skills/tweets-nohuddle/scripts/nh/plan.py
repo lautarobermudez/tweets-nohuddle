@@ -4,12 +4,10 @@ El agente solo completa los textos. Asi la estructura es siempre la misma y no c
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from typing import List, Optional
 
-from . import fuentes as nh_fuentes
-
-AR = timedelta(hours=-3)
+from . import tiempo
 
 
 def _min(hhmm: str) -> int:
@@ -27,7 +25,7 @@ def partidos_de_hoy(partidos: List[dict], hoy: date, liga: str = "NFL") -> List[
     for p in partidos:
         if p.get("liga") != liga or p.get("terminado"):
             continue
-        d = nh_fuentes._hora_ar(p.get("fecha_utc", ""))
+        d = tiempo.hora_ar(p.get("fecha_utc", ""))
         if d is not None and d.date() == hoy:
             out.append(d.hour * 60 + d.minute)
     return sorted(out)
@@ -55,7 +53,7 @@ def armar(reglas: dict, partidos: List[dict], ahora_utc: Optional[datetime] = No
     """
     cfg = reglas["plan_diario"]
     ahora_utc = ahora_utc or datetime.now(timezone.utc)
-    ar = ahora_utc + AR
+    ar = tiempo.ahora_ar(ahora_utc)
     hoy = ar.date()
     ventana = reglas["ventana_horaria"]
     tope = _min(ventana["hasta"])

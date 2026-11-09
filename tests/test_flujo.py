@@ -103,26 +103,27 @@ class ConCarpeta(unittest.TestCase):
 
 
 class TestPreparar(ConCarpeta):
-    def test_genera_digest_plan_y_brief(self):
+    def test_genera_digest_ids_plan_y_brief(self):
         r = flujo.preparar(fetch=fetch_falso, ahora=self.AHORA)
-        self.assertTrue(r["digest"].exists())
-        self.assertTrue(r["tweets"].exists())
-        plan_json = json.loads(r["tweets"].read_text(encoding="utf-8"))
-        self.assertTrue(plan_json["items"])
-        for esperado in ("PLAN DEL DIA", "=== DIGEST ===", "=== ESTILO ===", "NO cites fuentes", "tweets.py cerrar", "Jacobs"):
+        carpeta = r["digest"].parent
+        for nombre in ("digest.md", "digest_ids.json", "plan.json", "candidatos.json"):
+            self.assertTrue((carpeta / nombre).exists(), nombre)
+        self.assertFalse(r["redaccion"].exists())  # lo escribe el agente (si existiera, Write exigiria leerlo antes)
+        for esperado in ("PLAN DEL DIA", "=== DIGEST ===", "=== ESTILO ===", "id | historias | texto", "NO cites fuentes", "tweets.py cerrar", "Jacobs", "N1"):
             self.assertIn(esperado, r["brief"])
+        self.assertNotIn("http", r["digest"].read_text(encoding="utf-8"))
 
-    def test_no_pisa_lo_ya_completado_el_mismo_dia(self):
+    def test_no_pisa_el_plan_si_ya_hay_una_redaccion_del_dia(self):
         r = flujo.preparar(fetch=fetch_falso, ahora=self.AHORA)
-        d = json.loads(r["tweets"].read_text(encoding="utf-8"))
-        d["items"][0]["textos"] = ["texto ya escrito"]
-        r["tweets"].write_text(json.dumps(d), encoding="utf-8")
-        r2 = flujo.preparar(fetch=fetch_falso, ahora=self.AHORA)
+        r["redaccion"].write_text("t1 | N1 | Texto ya escrito.", encoding="utf-8")
+        plan_antes = (r["digest"].parent / "plan.json").read_text(encoding="utf-8")
+        mas_tarde = datetime(2026, 11, 9, 19, 0, tzinfo=timezone.utc)  # el plan nuevo saltearia horarios: no debe pasar
+        r2 = flujo.preparar(fetch=fetch_falso, ahora=mas_tarde)
         self.assertTrue(r2["reutilizado"])
-        self.assertEqual(json.loads(r2["tweets"].read_text(encoding="utf-8"))["items"][0]["textos"], ["texto ya escrito"])
-        r3 = flujo.preparar(fetch=fetch_falso, ahora=self.AHORA, nuevo=True)
+        self.assertEqual((r["digest"].parent / "plan.json").read_text(encoding="utf-8"), plan_antes)
+        r3 = flujo.preparar(fetch=fetch_falso, ahora=mas_tarde, nuevo=True)
         self.assertFalse(r3["reutilizado"])
-        self.assertEqual(json.loads(r3["tweets"].read_text(encoding="utf-8"))["items"][0]["textos"], [])
+        self.assertFalse(r3["redaccion"].exists())
 
     def test_sin_ningun_medio_da_un_mensaje_claro(self):
         def caido(url):
@@ -133,39 +134,68 @@ class TestPreparar(ConCarpeta):
 
 
 class TestCerrar(ConCarpeta):
-    def _completar(self, r, textos):
-        d = json.loads(r["tweets"].read_text(encoding="utf-8"))
-        for i, (txt, fuente) in zip(d["items"], textos):
-            i["textos"] = [txt] if i["tipo"] == "tweet" else [txt, txt + " Segundo post distinto del hilo."]
-            i["fuentes"] = [{"medio": fuente, "url": "https://www.espn.com/nfl/story/_/id/1"}]
-        r["tweets"].write_text(json.dumps(d), encoding="utf-8")
-
-    def test_flujo_completo(self):
+    def _preparado(self, redaccion_txt):
         r = flujo.preparar(fetch=fetch_falso, ahora=self.AHORA, todo_el_dia=True)
-        self._completar(r, [("Josh Jacobs se opera de un dedo y no hay fecha de regreso.", "ESPN"),
-                            ("Todd Monken no define el quarterback de los Browns para la Semana 10.", "Pro Football Talk")])
-        out = flujo.cerrar(r["tweets"])
+        r["redaccion"].write_text(redaccion_txt, encoding="utf-8")
+        return r
+
+    def test_flujo_completo_con_ids_resueltos_por_el_script(self):
+        r = self._preparado("# mi redaccion\nt1 | - | Dallas Cowboys le ganó 27-23 a Indianapolis Colts.\n"
+                            "t2 | N1 | Josh Jacobs necesita una cirugía en un dedo y no hay fecha de regreso.\n"
+                            "h1 | N1,N2 | Los Jaguars se mueven fuerte antes del deadline.\n+ Primero, el safety Jessie Bates III.\n+ Después, Jordan Davis.\n")
+        out = flujo.cerrar()
         self.assertEqual(out["errores"], [])
         self.assertTrue(out["word"].exists())
-        self.assertEqual(len(out["tabla"]), 2)
-        self.assertEqual(len(out["descartados"]), len(REGLAS["plan_diario"]["slots"]) - 2)
-        self.assertEqual(out["tabla"][0][1:], ("tweet", "resultado", "ESPN"))
+        self.assertEqual(len(out["tabla"]), 3)
+        tweets = json.loads((r["digest"].parent / "tweets.json").read_text(encoding="utf-8"))
+        t2 = [i for i in tweets["items"] if i["id"] == "t2"][0]
+        self.assertTrue(all(f["url"].startswith("http") for f in t2["fuentes"]))  # las URLs las puso el script
+        t1 = [i for i in tweets["items"] if i["id"] == "t1"][0]
+        self.assertEqual(t1["fuentes"][0]["medio"], "ESPN")  # sin historia: marcador de ESPN
+        h1 = [i for i in tweets["items"] if i["id"] == "h1"][0]
+        self.assertEqual((h1["tipo"], len(h1["textos"])), ("hilo", 3))
+        self.assertEqual(len(out["descartados"]), len(REGLAS["plan_diario"]["slots"]) - 3)
 
     def test_si_cita_una_fuente_no_arma_el_word(self):
-        r = flujo.preparar(fetch=fetch_falso, ahora=self.AHORA, todo_el_dia=True)
-        self._completar(r, [("Según ESPN, Josh Jacobs se opera de un dedo.", "ESPN")])
-        out = flujo.cerrar(r["tweets"])
+        self._preparado("t1 | N1 | Según ESPN, Josh Jacobs se opera de un dedo.")
+        out = flujo.cerrar()
         self.assertIn("cita_en_texto", [e["regla"] for e in out["errores"]])
         self.assertIsNone(out["word"])
 
+    def test_errores_de_formato_y_de_ids_bloquean_con_mensaje_claro(self):
+        self._preparado("t1 | N99 | Texto con una historia inexistente.\nt99 | - | Slot que no existe.\nesto no tiene el formato")
+        out = flujo.cerrar()
+        mensajes = " ".join(e["mensaje"] for e in out["errores"])
+        self.assertIn("N99", mensajes)
+        self.assertIn("slot desconocido", mensajes)
+        self.assertIn("formato esperado", mensajes)
+        self.assertIsNone(out["word"])
+
+    def test_se_puede_corregir_y_volver_a_cerrar(self):
+        r = self._preparado("t1 | N1 | Según ESPN, Jacobs se opera.")
+        self.assertIsNone(flujo.cerrar()["word"])
+        r["redaccion"].write_text("t1 | N1 | Josh Jacobs se opera de un dedo y no hay fecha de regreso.", encoding="utf-8")
+        self.assertIsNotNone(flujo.cerrar()["word"])
+
+    def test_modo_manual_con_tweets_json_completo(self):
+        r = flujo.preparar(fetch=fetch_falso, ahora=self.AHORA, todo_el_dia=True)
+        d = json.loads((r["digest"].parent / "plan.json").read_text(encoding="utf-8"))
+        d["items"][0]["textos"] = ["Dallas Cowboys le ganó 27-23 a Indianapolis Colts."]
+        d["items"][0]["fuentes"] = [{"medio": "ESPN", "url": "https://www.espn.com/nfl/scoreboard"}]
+        ruta = r["digest"].parent / "tweets.json"
+        ruta.write_text(json.dumps(d), encoding="utf-8")
+        out = flujo.cerrar(ruta)
+        self.assertEqual(out["errores"], [])
+        self.assertTrue(out["word"].exists())
+
     def test_sin_nada_completado_da_un_mensaje_claro(self):
-        r = flujo.preparar(fetch=fetch_falso, ahora=self.AHORA)
+        self._preparado("# solo comentarios\n")
         with self.assertRaises(flujo.FlujoError):
-            flujo.cerrar(r["tweets"])
+            flujo.cerrar()
 
     def test_sin_preparar_antes(self):
         with self.assertRaises(flujo.FlujoError):
-            flujo.cerrar(Path(self.tmp.name) / "no_existe.json")
+            flujo.cerrar()
 
 
 if __name__ == "__main__":

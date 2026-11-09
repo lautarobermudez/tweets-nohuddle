@@ -3,7 +3,7 @@
 
 FLUJO NORMAL (son los dos unicos comandos que usa el agente):
   python tweets.py preparar [--todo-el-dia] [--nuevo]   # chequea, junta medios, arma digest y plan del dia; imprime todo lo que el agente necesita
-  python tweets.py cerrar [tweets.json] [--forzar]      # valida, arma el Word, actualiza el historial e imprime el resumen final
+  python tweets.py cerrar [redaccion.txt|tweets.json] [--forzar]   # valida, arma el Word, actualiza el historial e imprime el resumen final
 
 COMANDOS SUELTOS (para depurar o para los modos opcionales):
   python tweets.py doctor [--red]                      # chequea que todo este listo para correr
@@ -176,7 +176,7 @@ def cmd_cerrar(a) -> int:
     if r["descartados"]:
         print(f"Slots sin completar (descartados): {', '.join(r['descartados'])}")
     if r["errores"]:
-        print("ERRORES (corregilos en tweets.json y volve a correr: tweets.py cerrar):")
+        print("ERRORES (corregilos en redaccion.txt y volve a correr: tweets.py cerrar):")
         for e in r["errores"]:
             print(f"  [{e['id']}] {e['regla']}: {e['mensaje']}")
     if r["word"] is None:

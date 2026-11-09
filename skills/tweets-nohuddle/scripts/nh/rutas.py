@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import date, datetime, timedelta, timezone
+from datetime import date
 from pathlib import Path
+
+from . import tiempo
 
 # .../tweets-nohuddle/scripts/nh/rutas.py -> parents[2] = carpeta de la skill
 SKILL_DIR = Path(__file__).resolve().parents[2]
@@ -12,8 +14,7 @@ CONFIG_DIR = SKILL_DIR / "config"
 
 
 def hoy_ar() -> date:
-    """Fecha de hoy en Argentina (UTC-3), sin importar la zona horaria de la maquina."""
-    return (datetime.now(timezone.utc) - timedelta(hours=3)).date()
+    return tiempo.hoy_ar()
 
 
 def work_dir() -> Path:

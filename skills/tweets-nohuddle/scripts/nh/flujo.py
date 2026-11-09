@@ -9,8 +9,9 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional
 
+from . import digest as nh_digest
 from . import fuentes as nh_fuentes
-from . import historial, plan, rss, rutas, validar, wordgen
+from . import historial, plan, redaccion, rss, rutas, validar, wordgen
 
 
 class FlujoError(Exception):
@@ -51,68 +52,93 @@ def preparar(
     esqueleto = plan.armar(reglas, res["partidos"], ahora, todo_el_dia)
     fecha = esqueleto["fecha"]
     carpeta = rutas.dia_dir(fecha)
+    ruta_red = carpeta / "redaccion.txt"
+    if nuevo:  # empezar de cero: se borra lo de hoy
+        for nombre in ("redaccion.txt", "tweets.json", "plan.json"):
+            (carpeta / nombre).unlink(missing_ok=True)
     rutas.guardar_json(carpeta / "candidatos.json", res)
-    digest_txt = nh_fuentes.digest(res, reglas, ahora)
+    digest_txt, indice = nh_digest.construir(res, reglas, ahora)
     (carpeta / "digest.md").write_text(digest_txt, encoding="utf-8")
+    rutas.guardar_json(carpeta / "digest_ids.json", indice)
 
-    ruta_tweets = carpeta / "tweets.json"
-    reutilizado = ruta_tweets.exists() and not nuevo
-    if not reutilizado:
-        rutas.guardar_json(ruta_tweets, esqueleto)
-    plan_actual = rutas.cargar_json(ruta_tweets)
+    reutilizado = ruta_red.exists() and (carpeta / "plan.json").exists()
+    if not reutilizado:  # el plan solo se rehace si no hay una redaccion en curso que dependa de el
+        rutas.guardar_json(carpeta / "plan.json", esqueleto)
+    plan_actual = rutas.cargar_json(carpeta / "plan.json")
 
     estilo = (rutas.SKILL_DIR / "references" / "estilo_tweets.md").read_text(encoding="utf-8")
-    brief = _brief(fecha, ruta_tweets, plan_actual, digest_txt, estilo, reglas, reutilizado)
-    return {"fecha": fecha, "tweets": ruta_tweets, "digest": carpeta / "digest.md", "brief": brief,
+    brief = _brief(fecha, ruta_red, plan_actual, digest_txt, estilo, reutilizado)
+    return {"fecha": fecha, "redaccion": ruta_red, "digest": carpeta / "digest.md", "brief": brief,
             "fuentes_ok": res["fuentes_ok"], "fuentes_error": res["fuentes_error"], "reutilizado": reutilizado}
 
 
-def _brief(fecha, ruta_tweets, plan_actual, digest_txt, estilo, reglas, reutilizado) -> str:
+def _brief(fecha, ruta_red, plan_actual, digest_txt, estilo, reutilizado) -> str:
+    ids = [i["id"] for i in plan_actual["items"]]
+    ej1, ej2 = (ids + ["t1", "t2"])[:2]
     L = [f"=== PREPARADO ({fecha}) ===",
-         f"Archivo a completar: {ruta_tweets}" + ("  (ya existia de una corrida previa de hoy: se conserva)" if reutilizado else ""),
+         f"Escribi este archivo: {ruta_red}" + ("   (YA EXISTE de una corrida previa de hoy: para rehacerlo desde cero corre `preparar --nuevo`; o leelo y editalo)" if reutilizado else ""),
          "",
-         "QUE HACER (solo esto):",
-         "1. Abri el archivo y, para cada slot, completa `textos` (1 texto si es tweet; 2 a 6 si es hilo) y `fuentes` ([{medio, url}] tomados del digest).",
-         "2. Podes cambiar `categoria`, `liga` u `hora` de un slot, y borrar los que no uses. Los slots vacios se descartan solos.",
-         "3. Usa SOLO lo que dice el digest. No agregues datos, cifras ni citas.",
-         "4. NO cites fuentes en el texto: nada de 'segun...', 'reporta...' ni nombres de insiders. Escribis como medio propio.",
-         "   Si el digest muestra un rumor ('sources', 'report', 'could'), redactalo en condicional (\"irian por\", \"estarian cerca\") en vez de afirmarlo.",
-         "5. Cuando termines, corre: tweets.py cerrar",
+         "QUE HACER (solo esto): una linea por publicacion, con este formato",
+         "    id | historias | texto",
+         f"    {ej1} | N1,N4 | Texto del tweet.",
+         f"    {ej2}@12:30 | C2 | Otro tweet (el @hora es opcional: cambia el horario).",
+         "    h1 | N3 | Primer post de un hilo.",
+         "    + Segundo post del hilo.",
+         "    + Tercer post del hilo.",
+         "  - `historias`: IDs del digest de donde sale el dato (N1, C2...). Si no sale de una historia (un resultado, una previa), pone `-`.",
+         "  - Slots que no uses: omitilos (se descartan solos). Un tweet con varias lineas `+` pasa a ser un hilo.",
+         "  - Usa SOLO lo que dice el digest. No agregues datos, cifras ni citas.",
+         "  - NO cites fuentes en el texto: nada de 'segun...', 'reporta...' ni nombres de insiders. Escribis como medio propio.",
+         "    Si el digest muestra un rumor ('sources', 'report', 'could', 'likely'), redactalo en condicional (\"irian por\", \"estarian cerca\").",
+         "  - Cuando termines, corre: tweets.py cerrar",
          "",
          "PLAN DEL DIA (hora de Argentina):"]
     for i in plan_actual["items"]:
-        estado = "completo" if any(t.strip() for t in i.get("textos", [])) else "vacio"
-        L.append(f"- {i['id']}  {i['hora']}  {i['tipo']:<5} {i['liga']:<7} {i['categoria']:<11} ({i['prioridad']}, {estado})")
+        L.append(f"- {i['id']}  {i['hora']}  {i['tipo']:<5} {i['liga']:<7} {i['categoria']:<11} ({i['prioridad']})")
     L += ["", "=== DIGEST ===", digest_txt, "=== ESTILO ===", estilo]
     return "\n".join(L)
 
 
-def cerrar(ruta_tweets: Optional[Path] = None, forzar: bool = False) -> dict:
-    """Valida lo que escribio el agente, arma el Word, actualiza el historial y devuelve el resumen para el usuario."""
+def cerrar(ruta: Optional[Path] = None, forzar: bool = False) -> dict:
+    """Valida lo que escribio el agente, arma el Word, actualiza el historial y devuelve el resumen para el usuario.
+
+    Lee `redaccion.txt` (formato compacto) del dia; si no existe, usa un `tweets.json` ya completo (modo manual).
+    """
     reglas = rutas.cargar_reglas()
     insiders = rutas.cargar_fuentes().get("insiders", [])
-    ruta = Path(ruta_tweets) if ruta_tweets else rutas.dia_dir(rutas.hoy_ar().isoformat()) / "tweets.json"
-    if not ruta.exists():
-        raise FlujoError(f"No encuentro {ruta}. Primero corre: tweets.py preparar")
-    tweets = rutas.cargar_json(ruta)
+    ruta = Path(ruta) if ruta else rutas.dia_dir(rutas.hoy_ar().isoformat()) / "redaccion.txt"
+    carpeta = ruta.parent
+    problemas = []
+    if ruta.suffix == ".txt" and ruta.exists():
+        plan_json, ids_json = carpeta / "plan.json", carpeta / "digest_ids.json"
+        if not plan_json.exists() or not ids_json.exists():
+            raise FlujoError("Falta el plan del dia: primero corre tweets.py preparar.")
+        entradas, problemas = redaccion.parsear(ruta.read_text(encoding="utf-8"))
+        tweets, p2 = redaccion.aplicar(rutas.cargar_json(plan_json), entradas, rutas.cargar_json(ids_json))
+        problemas += p2
+        rutas.guardar_json(carpeta / "tweets.json", tweets)
+    elif (carpeta / "tweets.json").exists() or ruta.suffix == ".json":
+        tweets = rutas.cargar_json(ruta if ruta.suffix == ".json" else carpeta / "tweets.json")
+    else:
+        raise FlujoError(f"No encuentro {ruta}. Escribi la redaccion (ver tweets.py preparar) antes de cerrar.")
     tweets, descartados = plan.limpiar(tweets)
     if not tweets["items"]:
-        raise FlujoError("No hay ningun texto completado: completa al menos un slot de tweets.json.")
-    rutas.guardar_json(ruta, tweets)
+        raise FlujoError("No hay ningun texto completado: escribi al menos una linea en redaccion.txt.")
+    rutas.guardar_json(carpeta / "tweets.json", tweets)
 
     hoy = date.fromisoformat(tweets["fecha"])
-    candidatos = ruta.with_name("candidatos.json")
+    candidatos = carpeta / "candidatos.json"
     titulares = []
     if candidatos.exists():
         titulares = [i["titulo"] for h in rutas.cargar_json(candidatos).get("historias", []) for i in h["items"]]
     res = validar.validar(tweets, reglas, historial.recientes(reglas["historial_dias"], hoy=hoy), titulares, insiders)
+    res["errores"] = [{"id": "-", "regla": "redaccion", "mensaje": m} for m in problemas] + res["errores"]
 
     resultado = {"errores": res["errores"], "avisos": res["avisos"], "descartados": descartados, "word": None, "tabla": _tabla(tweets)}
     if res["errores"] and not forzar:
         return resultado
     avisos = res["avisos"] + [dict(e, mensaje="ERROR: " + e["mensaje"]) for e in res["errores"]]
-    d = hoy
-    destino = rutas.dia_dir(tweets["fecha"]) / f"Tweets No Huddle - {d.day:02d}-{d.month:02d}-{d.year}.docx"
+    destino = rutas.dia_dir(tweets["fecha"]) / f"Tweets No Huddle - {hoy.day:02d}-{hoy.month:02d}-{hoy.year}.docx"
     wordgen.armar_docx(tweets, reglas, destino, avisos)
     if not res["errores"]:
         historial.agregar(tweets)

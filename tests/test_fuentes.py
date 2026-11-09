@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime, timezone
 
 from tests import base
-from nh import fuentes, rss, rutas
+from nh import digest, fuentes, rss, rutas
 
 
 class TestParseo(unittest.TestCase):
@@ -13,6 +13,13 @@ class TestParseo(unittest.TestCase):
         self.assertEqual(items[0]["resumen"], "Josh Jacobs will have surgery.")
         self.assertEqual(items[0]["publicado"].tzinfo, timezone.utc)
         self.assertEqual(items[0]["publicado"].hour, 21)  # 16:50 EST = 21:50 UTC
+
+    def test_limpia_entidades_html_de_titulos_y_resumenes(self):
+        xml = ("<rss><channel><item><title>Sunday&amp;#39;s win &amp;amp; more</title><link>https://x/1</link>"
+               "<description>&lt;p&gt;Jacobs&amp;#39; finger &amp;amp; surgery&lt;/p&gt;</description></item></channel></rss>").encode()
+        it = rss.parsear_feed(xml)[0]
+        self.assertEqual(it["titulo"], "Sunday's win & more")
+        self.assertEqual(it["resumen"], "Jacobs' finger & surgery")
 
     def test_atom(self):
         items = rss.parsear_feed(base.fixture("feed_atom.xml"))
@@ -117,18 +124,22 @@ class TestRecolectar(unittest.TestCase):
         self.assertEqual(r["historias"], [])
         json.dumps(r)  # tiene que ser serializable
 
-    def test_digest_es_compacto_y_trae_lo_esencial(self):
+    def test_digest_es_compacto_con_ids_y_sin_urls(self):
         reglas = rutas.cargar_reglas()
         r = fuentes.recolectar(self._fuentes(), reglas, ahora=self.AHORA, fetch=self._fetch)
-        d = fuentes.digest(r, reglas, ahora=self.AHORA)
+        d, indice = digest.construir(r, reglas, ahora=self.AHORA)
         self.assertIn("## NFL", d)
         self.assertIn("## College", d)
-        self.assertIn("[2]", d)  # la historia de Jacobs, cubierta por 2 medios
+        self.assertIn("N1 [2]", d)  # la historia de Jacobs, cubierta por 2 medios
         self.assertIn("Jacobs", d)
+        self.assertNotIn("http", d)  # las URLs no viajan al modelo: las resuelve el script por ID
         self.assertIn("Buffalo Bills at Minnesota Vikings (lun 09/11 22:15)", d)  # 01:15Z -> 22:15 hora de Argentina
         self.assertIn("Philadelphia Eagles 24", d)
         self.assertNotIn("BetMGM", d)
-        self.assertLess(len(d), 3000)  # unos pocos cientos de tokens con datos de muestra
+        self.assertLess(len(d), 3000)
+        f = indice["N1"]["fuentes"]
+        self.assertEqual({x["medio"] for x in f}, {"ESPN", "Pro Football Talk"})
+        self.assertTrue(all(x["url"].startswith("http") for x in f))
 
     def test_digest_incluye_siempre_los_proximos_aunque_haya_muchos_terminados(self):
         reglas = rutas.cargar_reglas()
@@ -136,21 +147,24 @@ class TestRecolectar(unittest.TestCase):
                      "equipos": [{"equipo": f"A{i}", "puntos": "1"}, {"equipo": f"B{i}", "puntos": "2"}]} for i in range(30)]
         partidos.append({"liga": "NFL", "nombre": "Bills at Vikings", "fecha_utc": "2026-11-10T01:15Z", "estado": "Scheduled", "terminado": False, "equipos": []})
         res = {"historias": [], "fuentes_error": [{"medio": "USA Today"}, {"medio": "USA Today"}], "partidos": partidos}
-        d = fuentes.digest(res, reglas, ahora=self.AHORA)
+        d, _ = digest.construir(res, reglas, ahora=self.AHORA)
         self.assertIn("Bills at Vikings (lun 09/11 22:15)", d)
         self.assertEqual(d.count("USA Today"), 1)
         self.assertLessEqual(sum(1 for l in d.splitlines() if l.startswith("- NFL")), reglas["digest"]["max_partidos_por_liga"] + 6)
 
-    def test_digest_respeta_los_topes(self):
+    def test_digest_respeta_los_topes_y_numera_los_ids(self):
         reglas = rutas.cargar_reglas()
+
         def nom(i):  # nombres solo con letras (el agrupador ignora los numeros) y todos distintos
             return chr(65 + i % 26) + chr(97 + i // 26) * 3 + chr(97 + (i * 7) % 26) * 2
 
         items = [{"medio": f"M{i}", "tier": "A", "liga": "NFL", "titulo": f"Eq{nom(i)} Ju{nom(i + 3)} firma contrato con Cl{nom(i + 9)}", "link": f"https://x/{i}",
                   "resumen": "r" * 500, "publicado": "2026-11-09T20:00:00+00:00"} for i in range(40)]
         res = {"historias": fuentes.agrupar(items), "fuentes_error": [], "partidos": []}
-        d = fuentes.digest(res, reglas, ahora=self.AHORA)
-        self.assertEqual(sum(1 for l in d.splitlines() if l[:3].strip().rstrip(".").isdigit()), reglas["digest"]["max_historias_nfl"])
+        d, indice = digest.construir(res, reglas, ahora=self.AHORA)
+        tope = reglas["digest"]["max_historias_nfl"]
+        self.assertEqual(len(indice), tope)
+        self.assertEqual(sorted(indice, key=lambda x: int(x[1:]))[-1], f"N{tope}")
         self.assertNotIn("r" * 200, d)  # los resumenes se cortan
 
     def test_config_real_es_valida(self):

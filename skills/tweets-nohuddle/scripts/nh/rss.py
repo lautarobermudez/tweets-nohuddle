@@ -1,6 +1,7 @@
 """Lectura de feeds RSS/Atom y de la API publica de ESPN. Tolerante a fallos: un feed roto no frena la corrida."""
 from __future__ import annotations
 
+import html
 import json
 import re
 import time
@@ -54,10 +55,11 @@ def _fecha(txt: Optional[str]) -> Optional[datetime]:
     return d.astimezone(timezone.utc)
 
 
-def _limpiar(html: Optional[str]) -> str:
-    if not html:
+def _limpiar(texto_html: Optional[str]) -> str:
+    if not texto_html:
         return ""
-    t = re.sub(r"<[^>]+>", " ", html)
+    t = re.sub(r"<[^>]+>", " ", texto_html)
+    t = html.unescape(t)  # &#39; -> ' ; &amp; -> & (los feeds traen entidades HTML en los titulos y resumenes)
     return re.sub(r"\s+", " ", t).strip()
 
 
