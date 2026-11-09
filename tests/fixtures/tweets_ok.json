@@ -1,0 +1,20 @@
+{
+  "fecha": "2026-11-10",
+  "zona_horaria": "America/Argentina/Buenos_Aires",
+  "agenda": [{"hora": "22:15", "que": "Bills vs. Vikings, Monday Night Football"}],
+  "items": [
+    {"id": "t1", "tipo": "tweet", "categoria": "lesion", "liga": "NFL", "hora": "09:00", "prioridad": "esencial",
+     "textos": ["Josh Jacobs se opera de una fractura en un dedo y no hay fecha de regreso. Matt LaFleur no descartó mandarlo a la lista de lesionados. Golpe duro para el backfield de Green Bay."],
+     "fuentes": [{"medio": "ESPN", "url": "https://www.espn.com/nfl/story/_/id/1"}, {"medio": "Pro Football Talk", "url": "https://www.nbcsports.com/nfl/profootballtalk/a"}],
+     "atribucion": "confirmado", "imagen": {"sugerencia": "Foto de Jacobs en acción", "credito": "AP"},
+     "verificacion": {"estado": "OK", "detalle": ""}},
+    {"id": "t2", "tipo": "tweet", "categoria": "dato", "liga": "NFL", "hora": "11:30", "prioridad": "opcional",
+     "textos": ["Según Adam Schefter, los Jaguars adquirieron al safety Jessie Bates III en un intercambio con Atlanta antes de la fecha límite."],
+     "fuentes": [{"medio": "CBS Sports", "url": "https://www.cbssports.com/nfl/news/jessie-bates-trade"}],
+     "atribucion": "reportado", "verificacion": {"estado": "REVISAR", "detalle": "falta segunda fuente"}},
+    {"id": "h1", "tipo": "hilo", "categoria": "previa", "liga": "NFL", "hora": "19:00", "prioridad": "esencial",
+     "textos": ["Bills vs. Vikings abre la semana en Minnesota. Lo que hay que mirar, en tres puntos.", "Uno: cómo responde la defensa de Buffalo ante Justin Jefferson.", "Dos: la presión sobre el quarterback rival decide el partido."],
+     "fuentes": [{"medio": "ESPN", "url": "https://www.espn.com/nfl/story/_/id/50408415"}, {"medio": "CBS Sports", "url": "https://www.cbssports.com/nfl/news/x"}],
+     "atribucion": "confirmado", "verificacion": {"estado": "OK"}}
+  ]
+}

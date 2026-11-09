@@ -1,0 +1,27 @@
+{
+  "_comentario": "Fuentes de la skill /tweets-nohuddle. Cada feed es opcional: si uno falla, la corrida sigue con los demas y el agente cubre el hueco con busqueda web. Para sumar un medio, agregar un bloque a 'feeds'. 'activo': false lo apaga sin borrarlo.",
+  "feeds": [
+    {"id": "espn_nfl",  "medio": "ESPN",                 "tier": "A", "liga": "NFL",     "url": "https://www.espn.com/espn/rss/nfl/news",                  "activo": true,  "verificado": "2026-11-09"},
+    {"id": "espn_ncf",  "medio": "ESPN",                 "tier": "A", "liga": "College", "url": "https://www.espn.com/espn/rss/ncf/news",                  "activo": true,  "verificado": "2026-11-09"},
+    {"id": "cbs_nfl",   "medio": "CBS Sports",           "tier": "A", "liga": "NFL",     "url": "https://www.cbssports.com/rss/headlines/nfl/",            "activo": true,  "verificado": "2026-11-09"},
+    {"id": "cbs_ncf",   "medio": "CBS Sports",           "tier": "A", "liga": "College", "url": "https://www.cbssports.com/rss/headlines/college-football/", "activo": true,  "verificado": "2026-11-09"},
+    {"id": "pft",       "medio": "Pro Football Talk",    "tier": "A", "liga": "NFL",     "url": "https://www.nbcsports.com/profootballtalk.rss",           "activo": true,  "verificado": "2026-11-09"},
+    {"id": "yahoo_nfl", "medio": "Yahoo Sports",         "tier": "B", "liga": "NFL",     "url": "https://sports.yahoo.com/nfl/rss/",                       "activo": true,  "verificado": "2026-11-09", "nota": "Feed ruidoso (apuestas, fantasy)"},
+    {"id": "usat_nfl",  "medio": "USA Today",            "tier": "A", "liga": "NFL",     "url": "https://rssfeeds.usatoday.com/UsatodaycomNfl-TopStories", "activo": true,  "verificado": null, "nota": "No se pudo verificar al armar la skill; si falla, se cubre con busqueda web"},
+    {"id": "usat_ncf",  "medio": "USA Today",            "tier": "A", "liga": "College", "url": "https://rssfeeds.usatoday.com/UsatodaycomNcaaf-TopStories", "activo": true,  "verificado": null, "nota": "No se pudo verificar al armar la skill; si falla, se cubre con busqueda web"},
+    {"id": "si_nfl",    "medio": "Sports Illustrated",   "tier": "A", "liga": "NFL",     "url": "https://www.si.com/rss/si_nfl",                           "activo": false, "verificado": null, "nota": "Esa URL daba 404 al armar la skill; se cubre con busqueda web (dominio si.com)"}
+  ],
+  "medios_por_busqueda": [
+    {"medio": "Sports Illustrated", "tier": "A", "dominio": "si.com"},
+    {"medio": "USA Today",          "tier": "A", "dominio": "usatoday.com"},
+    {"medio": "NFL.com",            "tier": "A", "dominio": "nfl.com"},
+    {"medio": "Fox Sports",         "tier": "A", "dominio": "foxsports.com"},
+    {"medio": "The Athletic",       "tier": "A", "dominio": "nytimes.com"},
+    {"medio": "Associated Press",   "tier": "A", "dominio": "apnews.com"}
+  ],
+  "insiders": ["Adam Schefter", "Ian Rapoport", "Tom Pelissero", "Mike Garafolo", "Jeremy Fowler", "Dianna Russini", "Pete Thamel", "Ross Dellenger"],
+  "espn_api": [
+    {"liga": "NFL",     "url": "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"},
+    {"liga": "College", "url": "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=80"}
+  ]
+}
