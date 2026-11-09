@@ -83,13 +83,16 @@ def cmd_fuentes(a) -> int:
     hoy = rutas.hoy_ar().isoformat()
     salida = Path(a.salida) if a.salida else rutas.dia_dir(hoy) / "candidatos.json"
     rutas.guardar_json(salida, res)
+    resumen = salida.with_name("digest.md")
+    resumen.write_text(nh_fuentes.digest(res, rutas.cargar_reglas()), encoding="utf-8")
     print(f"Fuentes OK: {', '.join(res['fuentes_ok']) or 'ninguna'}")
     for e in res["fuentes_error"]:
         print(f"  no se pudo leer {e['id']} ({e['medio']}): {e['error']}")
     print(f"{res['total_titulares']} titulares en {len(res['historias'])} historias "
           f"({sum(1 for h in res['historias'] if h['n_medios'] >= 2)} cubiertas por 2+ medios); "
           f"{res['descartados_por_ruido']} descartados por ruido; {len(res['partidos'])} partidos en ESPN.")
-    print(f"Guardado en {salida}")
+    print(f"Resumen para redactar (leer ESTE, no el json): {resumen}  (~{len(resumen.read_text(encoding='utf-8')) // 4} tokens)")
+    print(f"Datos completos (solo para consultar): {salida}")
     return 0 if res["fuentes_ok"] else 2
 
 
@@ -98,7 +101,7 @@ def cmd_validar(a) -> int:
     reglas = rutas.cargar_reglas()
     hoy = date.fromisoformat(tweets["fecha"]) if tweets.get("fecha") else rutas.hoy_ar()
     hist = historial.recientes(reglas["historial_dias"], hoy=hoy)
-    res = validar.validar(tweets, reglas, hist, _titulares(a.titulares))
+    res = validar.validar(tweets, reglas, hist, _titulares(a.titulares), rutas.cargar_fuentes().get("insiders", []))
     _imprimir(res)
     return 1 if res["errores"] else 0
 
@@ -108,7 +111,7 @@ def cmd_word(a) -> int:
     tweets = rutas.cargar_json(ruta_json)
     reglas = rutas.cargar_reglas()
     hoy = date.fromisoformat(tweets["fecha"]) if tweets.get("fecha") else rutas.hoy_ar()
-    res = validar.validar(tweets, reglas, historial.recientes(reglas["historial_dias"], hoy=hoy), _titulares(a.titulares))
+    res = validar.validar(tweets, reglas, historial.recientes(reglas["historial_dias"], hoy=hoy), _titulares(a.titulares), rutas.cargar_fuentes().get("insiders", []))
     _imprimir(res)
     if res["errores"] and not a.forzar:
         print("No armo el Word porque hay errores. Corregilos (o usa --forzar para armarlo igual, marcando lo pendiente).")

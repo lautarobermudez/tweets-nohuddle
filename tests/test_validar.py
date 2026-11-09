@@ -4,11 +4,13 @@ import unittest
 from tests import base
 from nh import rutas, validar
 
-REGLAS = rutas.cargar_reglas()
+REGLAS = rutas.cargar_reglas()  # modo liviano (por defecto)
+ESTRICTAS = dict(REGLAS, exigir_doble_fuente=True, verificacion_obligatoria=True)
+INSIDERS = rutas.cargar_fuentes()["insiders"]
 
 
-def v(tweets, historial=None, titulares=None):
-    return validar.validar(tweets, REGLAS, historial, titulares)
+def v(tweets, historial=None, titulares=None, reglas=None):
+    return validar.validar(tweets, reglas or REGLAS, historial, titulares, INSIDERS)
 
 
 def reglas_de(res, clave="errores"):
@@ -32,14 +34,54 @@ class TestValidar(unittest.TestCase):
         self.t["items"][0]["textos"][0] = "Se lesionó [jugador] hoy"
         self.assertIn("corchetes", reglas_de(v(self.t)))
 
-    def test_confirmado_exige_dos_medios(self):
+    def test_modo_liviano_no_exige_doble_fuente(self):
         self.t["items"][0]["fuentes"] = self.t["items"][0]["fuentes"][:1]
-        self.assertIn("doble_fuente", reglas_de(v(self.t)))
+        self.assertNotIn("doble_fuente", reglas_de(v(self.t)))
+        self.assertEqual(v(self.t)["errores"], [])
 
-    def test_mismo_medio_dos_veces_no_cuenta_doble(self):
+    def test_modo_estricto_confirmado_exige_dos_medios(self):
+        self.t["items"][0]["fuentes"] = self.t["items"][0]["fuentes"][:1]
+        self.assertIn("doble_fuente", reglas_de(v(self.t, reglas=ESTRICTAS)))
+
+    def test_modo_estricto_mismo_medio_dos_veces_no_cuenta_doble(self):
         it = self.t["items"][0]
         it["fuentes"] = [{"medio": "ESPN", "url": "https://a"}, {"medio": "ESPN", "url": "https://b"}]
-        self.assertIn("doble_fuente", reglas_de(v(self.t)))
+        self.assertIn("doble_fuente", reglas_de(v(self.t, reglas=ESTRICTAS)))
+
+    def test_sin_atribucion_ni_verificacion_es_valido_en_modo_liviano(self):
+        for it in self.t["items"]:
+            it.pop("atribucion", None)
+            it.pop("verificacion", None)
+        res = v(self.t)
+        self.assertEqual(res["errores"], [])
+        self.assertNotIn("verificacion", reglas_de(res, "avisos"))  # no molesta con 'sin verificar'
+        self.assertIn("verificacion", reglas_de(v(self.t, reglas=ESTRICTAS), "avisos"))
+
+    def test_el_texto_debe_nombrar_su_fuente(self):
+        it = self.t["items"][0]
+        it.pop("atribucion", None)
+        it["textos"] = ["Josh Jacobs se opera de un dedo y no hay fecha de regreso."]
+        self.assertIn("fuente_en_texto", reglas_de(v(self.t), "avisos"))
+        it["textos"] = ["Según ESPN, Josh Jacobs se opera de un dedo y no hay fecha de regreso."]
+        self.assertNotIn("fuente_en_texto", [a["regla"] for a in v(self.t)["avisos"] if a["id"] == "t1"])
+        it["textos"] = ["Josh Jacobs se opera. Lo adelanta Pro Football Talk."]
+        self.assertNotIn("fuente_en_texto", [a["regla"] for a in v(self.t)["avisos"] if a["id"] == "t1"])
+        it["textos"] = ["Schefter: Josh Jacobs se opera de un dedo."]
+        self.assertNotIn("fuente_en_texto", [a["regla"] for a in v(self.t)["avisos"] if a["id"] == "t1"])
+
+    def test_alias_de_medio_por_siglas(self):
+        it = self.t["items"][0]
+        it.pop("atribucion", None)
+        it["fuentes"] = [{"medio": "Pro Football Talk", "url": "https://x"}]
+        it["textos"] = ["Josh Jacobs se opera de un dedo, adelanta PFT."]
+        self.assertNotIn("fuente_en_texto", [a["regla"] for a in v(self.t)["avisos"] if a["id"] == "t1"])
+
+    def test_las_preguntas_no_necesitan_fuente_en_el_texto(self):
+        it = self.t["items"][0]
+        it.pop("atribucion", None)
+        it["categoria"] = "pregunta"
+        it["textos"] = ["¿Quién llega mejor a enero?"]
+        self.assertNotIn("fuente_en_texto", [a["regla"] for a in v(self.t)["avisos"] if a["id"] == "t1"])
 
     def test_reportado_exige_atribucion_en_el_texto(self):
         self.t["items"][1]["textos"][0] = "Los Jaguars adquirieron al safety Jessie Bates III."
@@ -49,7 +91,7 @@ class TestValidar(unittest.TestCase):
         self.t["items"][0]["verificacion"] = {"estado": "ERROR", "detalle": "marcador mal"}
         self.assertIn("verificacion", reglas_de(v(self.t)))
         t2 = base.tweets_ok()
-        self.assertIn("verificacion", reglas_de(v(t2), "avisos"))  # el t2 trae REVISAR
+        self.assertIn("verificacion", reglas_de(v(t2), "avisos"))  # el t2 trae REVISAR (sigue avisando si hay verificador)
 
     def test_hilo_con_un_solo_post(self):
         self.t["items"][2]["textos"] = ["solo uno"]

@@ -117,6 +117,42 @@ class TestRecolectar(unittest.TestCase):
         self.assertEqual(r["historias"], [])
         json.dumps(r)  # tiene que ser serializable
 
+    def test_digest_es_compacto_y_trae_lo_esencial(self):
+        reglas = rutas.cargar_reglas()
+        r = fuentes.recolectar(self._fuentes(), reglas, ahora=self.AHORA, fetch=self._fetch)
+        d = fuentes.digest(r, reglas, ahora=self.AHORA)
+        self.assertIn("## NFL", d)
+        self.assertIn("## College", d)
+        self.assertIn("[2]", d)  # la historia de Jacobs, cubierta por 2 medios
+        self.assertIn("Jacobs", d)
+        self.assertIn("Buffalo Bills at Minnesota Vikings (lun 09/11 22:15)", d)  # 01:15Z -> 22:15 hora de Argentina
+        self.assertIn("Philadelphia Eagles 24", d)
+        self.assertNotIn("BetMGM", d)
+        self.assertLess(len(d), 3000)  # unos pocos cientos de tokens con datos de muestra
+
+    def test_digest_incluye_siempre_los_proximos_aunque_haya_muchos_terminados(self):
+        reglas = rutas.cargar_reglas()
+        partidos = [{"liga": "NFL", "nombre": f"Terminado {i}", "fecha_utc": f"2026-11-08T{10 + i % 10}:00Z", "estado": "Final", "terminado": True,
+                     "equipos": [{"equipo": f"A{i}", "puntos": "1"}, {"equipo": f"B{i}", "puntos": "2"}]} for i in range(30)]
+        partidos.append({"liga": "NFL", "nombre": "Bills at Vikings", "fecha_utc": "2026-11-10T01:15Z", "estado": "Scheduled", "terminado": False, "equipos": []})
+        res = {"historias": [], "fuentes_error": [{"medio": "USA Today"}, {"medio": "USA Today"}], "partidos": partidos}
+        d = fuentes.digest(res, reglas, ahora=self.AHORA)
+        self.assertIn("Bills at Vikings (lun 09/11 22:15)", d)
+        self.assertEqual(d.count("USA Today"), 1)
+        self.assertLessEqual(sum(1 for l in d.splitlines() if l.startswith("- NFL")), reglas["digest"]["max_partidos_por_liga"] + 6)
+
+    def test_digest_respeta_los_topes(self):
+        reglas = rutas.cargar_reglas()
+        def nom(i):  # nombres solo con letras (el agrupador ignora los numeros) y todos distintos
+            return chr(65 + i % 26) + chr(97 + i // 26) * 3 + chr(97 + (i * 7) % 26) * 2
+
+        items = [{"medio": f"M{i}", "tier": "A", "liga": "NFL", "titulo": f"Eq{nom(i)} Ju{nom(i + 3)} firma contrato con Cl{nom(i + 9)}", "link": f"https://x/{i}",
+                  "resumen": "r" * 500, "publicado": "2026-11-09T20:00:00+00:00"} for i in range(40)]
+        res = {"historias": fuentes.agrupar(items), "fuentes_error": [], "partidos": []}
+        d = fuentes.digest(res, reglas, ahora=self.AHORA)
+        self.assertEqual(sum(1 for l in d.splitlines() if l[:3].strip().rstrip(".").isdigit()), reglas["digest"]["max_historias_nfl"])
+        self.assertNotIn("r" * 200, d)  # los resumenes se cortan
+
     def test_config_real_es_valida(self):
         f = rutas.cargar_fuentes()
         ids = [x["id"] for x in f["feeds"]]

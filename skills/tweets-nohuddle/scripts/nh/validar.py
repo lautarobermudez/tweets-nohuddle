@@ -18,11 +18,33 @@ def _min(hhmm: str) -> int:
     return int(h) * 60 + int(m)
 
 
+_GENERICAS = {"sports", "news", "talk", "football", "pro", "the", "illustrated"}
+
+
+def _nombra_fuente(texto_completo: str, medios, insiders, palabras_atribucion) -> bool:
+    """True si el texto menciona a un medio de sus fuentes (nombre, una palabra distintiva o siglas), a un insider o usa 'segun...'."""
+    bajo = texto_completo.lower()
+    if any(p in bajo for p in palabras_atribucion):
+        return True
+    for medio in medios:
+        palabras = [w for w in re.findall(r"[A-Za-z0-9]+", medio)]
+        candidatos = {medio.lower()} | {w.lower() for w in palabras if len(w) >= 3 and w.lower() not in _GENERICAS}
+        if len(palabras) > 1:
+            candidatos.add("".join(w[0] for w in palabras).lower())  # "Pro Football Talk" -> pft
+        if any(re.search(r"\b" + re.escape(c) + r"\b", bajo) for c in candidatos if c):
+            return True
+    for ins in insiders:
+        if ins.lower() in bajo or ins.split()[-1].lower() in bajo:
+            return True
+    return False
+
+
 def validar(
     tweets: dict,
     reglas: dict,
     historial: Optional[List[dict]] = None,
     titulares: Optional[List[str]] = None,
+    insiders: Optional[List[str]] = None,
 ) -> dict:
     errores: List[dict] = []
     avisos: List[dict] = []
@@ -35,6 +57,7 @@ def validar(
 
     historial = historial or []
     titulares = titulares or []
+    insiders = insiders or []
 
     # ---- estructura general
     if not FECHA_RE.match(str(tweets.get("fecha", ""))):
@@ -121,23 +144,28 @@ def validar(
         # ---- fuentes y atribucion
         fuentes = it.get("fuentes")
         if not isinstance(fuentes, list) or not fuentes:
-            err(i, "fuentes", "falta al menos una fuente")
+            err(i, "fuentes", "falta al menos una fuente (medio + url)")
+            fuentes = []
         else:
             for f in fuentes:
                 if not (isinstance(f, dict) and f.get("medio") and str(f.get("url", "")).startswith("http")):
                     err(i, "fuentes", "cada fuente necesita 'medio' y 'url' (http...)")
                     break
-            medios = {f.get("medio") for f in fuentes if isinstance(f, dict) and f.get("medio")}
-            atr = it.get("atribucion")
-            if atr not in ("confirmado", "reportado"):
-                err(i, "atribucion", "'atribucion' debe ser 'confirmado' o 'reportado'")
-            elif atr == "confirmado" and len(medios) < reglas["min_medios_confirmado"]:
-                err(i, "doble_fuente", f"un hecho 'confirmado' necesita {reglas['min_medios_confirmado']} medios distintos (tiene {len(medios)}); si viene de un solo medio o insider, va como 'reportado' y con atribucion en el texto")
-            elif atr == "reportado":
-                if not any(p in " ".join(textos).lower() for p in reglas["palabras_atribucion"]):
-                    err(i, "atribucion", "es un dato 'reportado' pero el texto no nombra a quien lo reporta (segun / reporta / informo...)")
+        medios = {f.get("medio") for f in fuentes if isinstance(f, dict) and f.get("medio")}
+        atr = it.get("atribucion")  # opcional en modo liviano
+        if atr is not None and atr not in ("confirmado", "reportado"):
+            err(i, "atribucion", "'atribucion' (opcional) debe ser 'confirmado' o 'reportado'")
+        elif atr == "confirmado" and reglas.get("exigir_doble_fuente") and len(medios) < reglas["min_medios_confirmado"]:
+            err(i, "doble_fuente", f"modo estricto: un hecho 'confirmado' necesita {reglas['min_medios_confirmado']} medios distintos (tiene {len(medios)})")
+        elif atr == "reportado" and not any(p in " ".join(textos).lower() for p in reglas["palabras_atribucion"]):
+            err(i, "atribucion", "es un dato 'reportado' pero el texto no nombra a quien lo reporta (segun / reporta / informo...)")
 
-        # ---- verificacion
+        # En modo liviano la responsabilidad queda en el medio o insider: el texto tiene que nombrarlo.
+        if reglas.get("exigir_fuente_en_texto") and it.get("categoria") not in ("pregunta",):
+            if not _nombra_fuente(" ".join(textos), medios, insiders, reglas["palabras_atribucion"]):
+                avi(i, "fuente_en_texto", "el texto no nombra a su fuente (ESPN, CBS, Schefter, 'segun...'): agregarla")
+
+        # ---- verificacion (opcional salvo modo estricto)
         ver = it.get("verificacion")
         if ver is not None:
             est = ver.get("estado") if isinstance(ver, dict) else None
@@ -147,7 +175,7 @@ def validar(
                 err(i, "verificacion", "el verificador marco un ERROR de dato: corregir o descartar")
             elif est == "REVISAR":
                 avi(i, "verificacion", "el verificador pide revisar: " + str(ver.get("detalle", ""))[:120])
-        else:
+        elif reglas.get("verificacion_obligatoria"):
             avi(i, "verificacion", "sin verificar")
 
     # ---- cantidad total

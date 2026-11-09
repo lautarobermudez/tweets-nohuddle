@@ -1,6 +1,6 @@
 {
   "_comentario": "Reglas que validan los scripts. Cambiar aca, no en el codigo.",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "zona_horaria": "America/Argentina/Buenos_Aires",
   "max_caracteres": 280,
   "largo_url": 23,
@@ -16,20 +16,95 @@
   "max_emojis": 1,
   "max_exclamaciones": 1,
   "max_palabras_en_mayusculas": 2,
-  "ventana_horaria": {"desde": "08:00", "hasta": "23:30"},
+  "ventana_horaria": {
+    "desde": "08:00",
+    "hasta": "23:30"
+  },
   "separacion_minima_minutos": 20,
   "historial_dias": 7,
   "umbral_repetido": 0.6,
   "umbral_copia_titular": 0.7,
   "min_medios_confirmado": 2,
   "ruido_palabras": [
-    "promo code", "bonus bets", "bonus code", "betting", "odds", "parlay", "sportsbook",
-    "draftkings", "fanduel", "betmgm", "caesars", "prediction", "picks", "best bets",
-    "fantasy football", "waiver wire", "start/sit", "dfs", "lottery", "giveaway"
+    "promo code",
+    "bonus bets",
+    "bonus code",
+    "betting",
+    "odds",
+    "parlay",
+    "sportsbook",
+    "draftkings",
+    "fanduel",
+    "betmgm",
+    "caesars",
+    "prediction",
+    "picks",
+    "best bets",
+    "fantasy football",
+    "waiver wire",
+    "start/sit",
+    "dfs",
+    "lottery",
+    "giveaway"
   ],
-  "palabras_atribucion": ["según", "segun", "reporta", "reportó", "reporto", "informó", "informo", "de acuerdo con", "afirmó", "afirmo", "adelantó", "adelanto", "indicó", "indico", "reveló", "revelo", "dijo"],
-  "palabras_clickbait": ["no vas a creer", "increíble", "increible", "impactante", "escándalo", "escandalo", "bombazo", "no te lo pierdas", "urgente"],
-  "categorias": ["resultado", "lesion", "transaccion", "college", "dato", "previa", "analisis", "pregunta"],
-  "ligas": ["NFL", "College"],
-  "estados_verificacion": ["OK", "REVISAR", "ERROR"]
+  "palabras_atribucion": [
+    "según",
+    "segun",
+    "reporta",
+    "reportó",
+    "reporto",
+    "informó",
+    "informo",
+    "de acuerdo con",
+    "afirmó",
+    "afirmo",
+    "adelantó",
+    "adelanto",
+    "indicó",
+    "indico",
+    "reveló",
+    "revelo",
+    "dijo"
+  ],
+  "palabras_clickbait": [
+    "no vas a creer",
+    "increíble",
+    "increible",
+    "impactante",
+    "escándalo",
+    "escandalo",
+    "bombazo",
+    "no te lo pierdas",
+    "urgente"
+  ],
+  "categorias": [
+    "resultado",
+    "lesion",
+    "transaccion",
+    "college",
+    "dato",
+    "previa",
+    "analisis",
+    "pregunta"
+  ],
+  "ligas": [
+    "NFL",
+    "College"
+  ],
+  "estados_verificacion": [
+    "OK",
+    "REVISAR",
+    "ERROR"
+  ],
+  "_modo": "MODO LIVIANO (por defecto): se confia en la curaduria de los medios prestigiosos y los insiders; no se exige doble fuente ni verificador. Para volver al modo estricto, poner exigir_doble_fuente y verificacion_obligatoria en true.",
+  "exigir_doble_fuente": false,
+  "verificacion_obligatoria": false,
+  "exigir_fuente_en_texto": true,
+  "digest": {
+    "max_historias_nfl": 14,
+    "max_historias_college": 8,
+    "max_resumen_chars": 170,
+    "horas_partidos": 40,
+    "max_partidos_por_liga": 12
+  }
 }
