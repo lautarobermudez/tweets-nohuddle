@@ -27,10 +27,12 @@ def instalar(destino_skills: Path, actualizar: bool = False) -> Path:
     if destino.exists():
         if not actualizar:
             raise SystemExit(f"Ya esta instalada en {destino}. Usa --actualizar para reemplazarla.")
-        respaldo = destino_skills / (NOMBRE + ".anterior")
+        # El respaldo va FUERA de la carpeta de skills: si quedara adentro, Claude Code lo cargaria como una skill duplicada.
+        respaldo = destino_skills.parent / "skills-respaldo" / NOMBRE
         if respaldo.exists():
             shutil.rmtree(respaldo)  # un solo respaldo rotativo
-        destino.rename(respaldo)
+        respaldo.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(destino), str(respaldo))
         print(f"Version anterior guardada en {respaldo}")
     destino_skills.mkdir(parents=True, exist_ok=True)
     shutil.copytree(ORIGEN, destino, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))

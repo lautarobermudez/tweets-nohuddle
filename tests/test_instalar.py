@@ -25,16 +25,17 @@ class TestInstalar(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 instalar.instalar(Path(d) / "skills")
 
-    def test_actualizar_deja_un_solo_respaldo(self):
+    def test_actualizar_deja_un_solo_respaldo_fuera_de_skills(self):
         with tempfile.TemporaryDirectory() as d:
             skills = Path(d) / "skills"
             dest = instalar.instalar(skills)
             (dest / "marca.txt").write_text("v1", encoding="utf-8")
             instalar.instalar(skills, actualizar=True)
-            self.assertTrue((skills / "tweets-nohuddle.anterior" / "marca.txt").exists())
+            respaldo = Path(d) / "skills-respaldo" / "tweets-nohuddle"
+            self.assertTrue((respaldo / "marca.txt").exists())
             self.assertFalse((skills / "tweets-nohuddle" / "marca.txt").exists())
             instalar.instalar(skills, actualizar=True)  # segunda vez: reemplaza el respaldo, no acumula
-            self.assertEqual(len([p for p in skills.iterdir()]), 2)
+            self.assertEqual([p.name for p in skills.iterdir()], ["tweets-nohuddle"], "no debe quedar nada extra dentro de skills")
 
 
 if __name__ == "__main__":
