@@ -23,8 +23,8 @@ Es una vez y lleva 5 minutos. Después, cada mañana es un solo comando.
 
 ## Cómo leer el Word
 - Cada publicación tiene **hora sugerida (hora de Argentina)**, tipo (tweet o hilo), la liga y la categoría.
-- Cada tweet **nombra su fuente** ("según ESPN", "Schefter reporta") y trae el link de la nota. Los medios y los insiders son los que respaldan el dato: no se vuelve a verificar.
-- Arriba, "Para revisar antes de publicar" junta los avisos del día (por ejemplo, un texto que no nombra su fuente).
+- Los tweets están escritos **en voz propia del medio: no citan a nadie**. Debajo de cada uno aparece **"Fuente interna (no citar)"** con el medio y el link: es solo para que vos sepas de dónde salió. Si es un rumor, el texto ya viene en condicional ("irían", "estarían").
+- Arriba, "Para revisar antes de publicar" junta los avisos del día.
 - **Imagen sugerida:** usá primero las fotos de la biblioteca de No Huddle; si usás otra, poné el crédito y chequeá los derechos.
 - Si alguna vez querés que se **verifiquen los datos a fondo**, pedilo así: `/tweets-nohuddle con verificación` (gasta bastantes más tokens).
 

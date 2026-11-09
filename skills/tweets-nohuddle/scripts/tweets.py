@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """CLI de la skill /tweets-nohuddle. Solo biblioteca estandar (Python 3.8+).
 
+FLUJO NORMAL (son los dos unicos comandos que usa el agente):
+  python tweets.py preparar [--todo-el-dia] [--nuevo]   # chequea, junta medios, arma digest y plan del dia; imprime todo lo que el agente necesita
+  python tweets.py cerrar [tweets.json] [--forzar]      # valida, arma el Word, actualiza el historial e imprime el resumen final
+
+COMANDOS SUELTOS (para depurar o para los modos opcionales):
   python tweets.py doctor [--red]                      # chequea que todo este listo para correr
   python tweets.py hoy                                 # fecha de hoy en Argentina (AAAA-MM-DD)
   python tweets.py fuentes [--horas 36] [--salida X]   # junta titulares de los medios -> candidatos.json
@@ -22,7 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from nh import fuentes as nh_fuentes  # noqa: E402
-from nh import historial, rss, rutas, validar, verificacion, wordgen  # noqa: E402
+from nh import flujo, historial, rss, rutas, validar, verificacion, wordgen  # noqa: E402
 
 
 def _imprimir(res: dict) -> None:
@@ -150,6 +155,45 @@ def cmd_hoy(a) -> int:
     return 0
 
 
+def cmd_preparar(a) -> int:
+    try:
+        r = flujo.preparar(todo_el_dia=a.todo_el_dia, nuevo=a.nuevo)
+    except flujo.FlujoError as e:
+        print(f"No se pudo preparar: {e}", file=sys.stderr)
+        return 2
+    print(r["brief"])
+    if r["fuentes_error"]:
+        print("\n(Medios que no respondieron: " + ", ".join(sorted({e["medio"] for e in r["fuentes_error"]})) + ")")
+    return 0
+
+
+def cmd_cerrar(a) -> int:
+    try:
+        r = flujo.cerrar(Path(a.tweets) if a.tweets else None, forzar=a.forzar)
+    except flujo.FlujoError as e:
+        print(f"No se pudo cerrar: {e}", file=sys.stderr)
+        return 2
+    if r["descartados"]:
+        print(f"Slots sin completar (descartados): {', '.join(r['descartados'])}")
+    if r["errores"]:
+        print("ERRORES (corregilos en tweets.json y volve a correr: tweets.py cerrar):")
+        for e in r["errores"]:
+            print(f"  [{e['id']}] {e['regla']}: {e['mensaje']}")
+    if r["word"] is None:
+        print("No se armo el Word.")
+        return 1
+    print(f"WORD LISTO: {r['word']}")
+    print("\nRESUMEN (hora | tipo | categoria | fuente interna):")
+    for hora, tipo, cat, fuente in r["tabla"]:
+        print(f"  {hora} | {tipo:<5} | {cat:<11} | {fuente}")
+    if r["avisos"]:
+        print("\nAVISOS (para mirar antes de publicar):")
+        for x in r["avisos"]:
+            print(f"  [{x['id']}] {x['regla']}: {x['mensaje']}")
+    print("\nNada se publico: la persona de redes revisa y programa.")
+    return 1 if r["errores"] else 0
+
+
 def cmd_historial(a) -> int:
     hist = historial.recientes(a.dias, hoy=rutas.hoy_ar() if not a.hasta else date.fromisoformat(a.hasta))
     for h in hist:
@@ -161,6 +205,8 @@ def cmd_historial(a) -> int:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Herramientas de la skill /tweets-nohuddle")
     sub = p.add_subparsers(dest="cmd", required=True)
+    pr = sub.add_parser("preparar"); pr.add_argument("--todo-el-dia", action="store_true", help="no saltear los horarios que ya pasaron"); pr.add_argument("--nuevo", action="store_true", help="rehacer el plan aunque ya exista el de hoy"); pr.set_defaults(f=cmd_preparar)
+    ce = sub.add_parser("cerrar"); ce.add_argument("tweets", nargs="?"); ce.add_argument("--forzar", action="store_true"); ce.set_defaults(f=cmd_cerrar)
     d = sub.add_parser("doctor"); d.add_argument("--red", action="store_true"); d.set_defaults(f=cmd_doctor)
     f = sub.add_parser("fuentes"); f.add_argument("--horas", type=int, default=36); f.add_argument("--salida"); f.set_defaults(f=cmd_fuentes)
     v = sub.add_parser("validar"); v.add_argument("tweets"); v.add_argument("--titulares"); v.set_defaults(f=cmd_validar)

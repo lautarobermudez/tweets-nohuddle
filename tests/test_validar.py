@@ -39,7 +39,7 @@ class TestValidar(unittest.TestCase):
         self.assertNotIn("doble_fuente", reglas_de(v(self.t)))
         self.assertEqual(v(self.t)["errores"], [])
 
-    def test_modo_estricto_confirmado_exige_dos_medios(self):
+    def test_modo_estricto_exige_dos_medios_distintos(self):
         self.t["items"][0]["fuentes"] = self.t["items"][0]["fuentes"][:1]
         self.assertIn("doble_fuente", reglas_de(v(self.t, reglas=ESTRICTAS)))
 
@@ -57,35 +57,38 @@ class TestValidar(unittest.TestCase):
         self.assertNotIn("verificacion", reglas_de(res, "avisos"))  # no molesta con 'sin verificar'
         self.assertIn("verificacion", reglas_de(v(self.t, reglas=ESTRICTAS), "avisos"))
 
-    def test_el_texto_debe_nombrar_su_fuente(self):
-        it = self.t["items"][0]
-        it.pop("atribucion", None)
-        it["textos"] = ["Josh Jacobs se opera de un dedo y no hay fecha de regreso."]
-        self.assertIn("fuente_en_texto", reglas_de(v(self.t), "avisos"))
-        it["textos"] = ["Según ESPN, Josh Jacobs se opera de un dedo y no hay fecha de regreso."]
-        self.assertNotIn("fuente_en_texto", [a["regla"] for a in v(self.t)["avisos"] if a["id"] == "t1"])
-        it["textos"] = ["Josh Jacobs se opera. Lo adelanta Pro Football Talk."]
-        self.assertNotIn("fuente_en_texto", [a["regla"] for a in v(self.t)["avisos"] if a["id"] == "t1"])
-        it["textos"] = ["Schefter: Josh Jacobs se opera de un dedo."]
-        self.assertNotIn("fuente_en_texto", [a["regla"] for a in v(self.t)["avisos"] if a["id"] == "t1"])
+    def _con_texto(self, texto):
+        self.t["items"][0]["textos"] = [texto]
+        res = v(self.t)
+        return [e["regla"] for e in res["errores"] if e["id"] == "t1"], [a["regla"] for a in res["avisos"] if a["id"] == "t1"]
 
-    def test_alias_de_medio_por_siglas(self):
-        it = self.t["items"][0]
-        it.pop("atribucion", None)
-        it["fuentes"] = [{"medio": "Pro Football Talk", "url": "https://x"}]
-        it["textos"] = ["Josh Jacobs se opera de un dedo, adelanta PFT."]
-        self.assertNotIn("fuente_en_texto", [a["regla"] for a in v(self.t)["avisos"] if a["id"] == "t1"])
+    def test_no_se_cita_a_nadie_segun(self):
+        for frase in ("Según ESPN, Josh Jacobs se opera de un dedo.", "De acuerdo con CBS Sports, Jacobs se opera.",
+                      "Jacobs se opera, trascendió ayer.", "Fuentes de la liga dicen que Jacobs se opera."):
+            self.assertIn("cita_en_texto", self._con_texto(frase)[0], frase)
 
-    def test_las_preguntas_no_necesitan_fuente_en_el_texto(self):
-        it = self.t["items"][0]
-        it.pop("atribucion", None)
-        it["categoria"] = "pregunta"
-        it["textos"] = ["¿Quién llega mejor a enero?"]
-        self.assertNotIn("fuente_en_texto", [a["regla"] for a in v(self.t)["avisos"] if a["id"] == "t1"])
+    def test_no_se_nombra_a_insiders(self):
+        self.assertIn("cita_en_texto", self._con_texto("Josh Jacobs se opera de un dedo, adelantó Adam Schefter.")[0])
+        self.assertIn("cita_en_texto", self._con_texto("Rapoport tiene la novedad: Jacobs se opera.")[0])
 
-    def test_reportado_exige_atribucion_en_el_texto(self):
-        self.t["items"][1]["textos"][0] = "Los Jaguars adquirieron al safety Jessie Bates III."
-        self.assertIn("atribucion", reglas_de(v(self.t)))
+    def test_texto_propio_sin_citas_es_valido(self):
+        errores, avisos = self._con_texto("Josh Jacobs se opera de un dedo y no hay fecha de regreso. Matt LaFleur no descartó la lista de lesionados.")
+        self.assertEqual(errores, [])
+        self.assertEqual(avisos, [])
+
+    def test_un_entrenador_que_dijo_algo_no_es_citar_a_un_medio(self):
+        errores, avisos = self._con_texto("Andy Reid dijo que todavía no tomó decisiones sobre Butker.")
+        self.assertEqual(errores, [])
+        self.assertEqual(avisos, [])
+
+    def test_medio_como_sujeto_no_bloquea(self):
+        errores, _ = self._con_texto("ESPN será la titular exclusiva de los derechos del playoff hasta 2031.")
+        self.assertEqual(errores, [])
+
+    def test_medio_con_verbo_de_atribucion_avisa_pero_no_bloquea(self):
+        errores, avisos = self._con_texto("ESPN informa que Josh Jacobs se opera de un dedo.")
+        self.assertEqual(errores, [])
+        self.assertIn("cita_en_texto", avisos)
 
     def test_verificador_error_bloquea_y_revisar_avisa(self):
         self.t["items"][0]["verificacion"] = {"estado": "ERROR", "detalle": "marcador mal"}

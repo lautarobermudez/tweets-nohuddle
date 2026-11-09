@@ -1,6 +1,6 @@
 {
   "_comentario": "Reglas que validan los scripts. Cambiar aca, no en el codigo.",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "zona_horaria": "America/Argentina/Buenos_Aires",
   "max_caracteres": 280,
   "largo_url": 23,
@@ -24,7 +24,6 @@
   "historial_dias": 7,
   "umbral_repetido": 0.6,
   "umbral_copia_titular": 0.7,
-  "min_medios_confirmado": 2,
   "ruido_palabras": [
     "promo code",
     "bonus bets",
@@ -46,25 +45,6 @@
     "dfs",
     "lottery",
     "giveaway"
-  ],
-  "palabras_atribucion": [
-    "según",
-    "segun",
-    "reporta",
-    "reportó",
-    "reporto",
-    "informó",
-    "informo",
-    "de acuerdo con",
-    "afirmó",
-    "afirmo",
-    "adelantó",
-    "adelanto",
-    "indicó",
-    "indico",
-    "reveló",
-    "revelo",
-    "dijo"
   ],
   "palabras_clickbait": [
     "no vas a creer",
@@ -96,15 +76,132 @@
     "REVISAR",
     "ERROR"
   ],
-  "_modo": "MODO LIVIANO (por defecto): se confia en la curaduria de los medios prestigiosos y los insiders; no se exige doble fuente ni verificador. Para volver al modo estricto, poner exigir_doble_fuente y verificacion_obligatoria en true.",
+  "_modo": "MODO LIVIANO (por defecto): se confia en la curaduria de los medios prestigiosos y los insiders; no se exige doble fuente ni verificador. Los tweets NO citan fuentes en el texto (somos un medio): la fuente queda solo en el Word como referencia interna.",
   "exigir_doble_fuente": false,
   "verificacion_obligatoria": false,
-  "exigir_fuente_en_texto": true,
   "digest": {
     "max_historias_nfl": 14,
     "max_historias_college": 8,
     "max_resumen_chars": 170,
     "horas_partidos": 40,
     "max_partidos_por_liga": 12
+  },
+  "min_medios_doble_fuente": 2,
+  "palabras_cita": [
+    "según",
+    "segun",
+    "de acuerdo con",
+    "de acuerdo a",
+    "trascendió",
+    "trascendio",
+    "fuentes cercanas",
+    "fuentes de la liga",
+    "fuentes del equipo",
+    "fuentes confirmaron",
+    "fuentes indicaron",
+    "fuentes dijeron"
+  ],
+  "verbos_atribucion": [
+    "informa",
+    "informó",
+    "informo",
+    "reporta",
+    "reportó",
+    "reporto",
+    "adelanta",
+    "adelantó",
+    "adelanto",
+    "asegura",
+    "aseguró",
+    "aseguro",
+    "revela",
+    "reveló",
+    "revelo",
+    "publica",
+    "publicó",
+    "publico",
+    "afirma",
+    "afirmó",
+    "afirmo",
+    "indica",
+    "indicó",
+    "indico"
+  ],
+  "plan_diario": {
+    "descripcion": "Mezcla y horarios del dia (hora de Argentina). El script los ajusta al partido del dia y saltea los que ya pasaron.",
+    "slots": [
+      {
+        "hora": "08:30",
+        "tipo": "tweet",
+        "liga": "NFL",
+        "categoria": "resultado",
+        "prioridad": "esencial"
+      },
+      {
+        "hora": "09:45",
+        "tipo": "tweet",
+        "liga": "NFL",
+        "categoria": "lesion",
+        "prioridad": "esencial"
+      },
+      {
+        "hora": "11:00",
+        "tipo": "tweet",
+        "liga": "NFL",
+        "categoria": "transaccion",
+        "prioridad": "esencial"
+      },
+      {
+        "hora": "12:15",
+        "tipo": "tweet",
+        "liga": "College",
+        "categoria": "college",
+        "prioridad": "opcional"
+      },
+      {
+        "hora": "13:30",
+        "tipo": "hilo",
+        "liga": "NFL",
+        "categoria": "analisis",
+        "prioridad": "esencial"
+      },
+      {
+        "hora": "15:00",
+        "tipo": "tweet",
+        "liga": "NFL",
+        "categoria": "dato",
+        "prioridad": "opcional"
+      },
+      {
+        "hora": "16:30",
+        "tipo": "tweet",
+        "liga": "College",
+        "categoria": "college",
+        "prioridad": "opcional"
+      },
+      {
+        "hora": "18:00",
+        "tipo": "tweet",
+        "liga": "NFL",
+        "categoria": "pregunta",
+        "prioridad": "opcional"
+      },
+      {
+        "hora": "20:30",
+        "tipo": "tweet",
+        "liga": "NFL",
+        "categoria": "previa",
+        "prioridad": "esencial"
+      },
+      {
+        "hora": "22:00",
+        "tipo": "hilo",
+        "liga": "College",
+        "categoria": "previa",
+        "prioridad": "opcional"
+      }
+    ],
+    "minutos_antes_del_partido": 90,
+    "hora_minima_previa": "09:00"
   }
 }

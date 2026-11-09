@@ -67,7 +67,7 @@ class TestWord(ConCarpetaTemporal):
             for nombre in z.namelist():
                 xml.dom.minidom.parseString(z.read(nombre))  # todo XML bien formado
             doc = z.read("word/document.xml").decode("utf-8")
-        for esperado in ("Josh Jacobs se opera", "Martes 10/11/2026", "2 tweets y 1 hilo</w:t>", "Post 2 de 3", "falta segunda fuente", "Fuente: ESPN"):
+        for esperado in ("Josh Jacobs se opera", "Martes 10/11/2026", "2 tweets y 1 hilo</w:t>", "Post 2 de 3", "falta segunda fuente", "Fuente interna (no citar): ESPN"):
             self.assertIn(esperado, doc)
         # orden por hora: 09:00 antes que 19:00
         self.assertLess(doc.index("09:00 · TWEET"), doc.index("19:00 · HILO"))

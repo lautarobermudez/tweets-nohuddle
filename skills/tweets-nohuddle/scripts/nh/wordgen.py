@@ -94,15 +94,13 @@ def _cuerpo(tweets: dict, reglas: dict, avisos: Optional[List[dict]]) -> str:
         est = ver.get("estado")
         largos = " / ".join(str(texto.largo_x(t, reglas["largo_url"])) for t in it["textos"])
         meta = _run(f"Caracteres: {largos} de {reglas['max_caracteres']}", size=16, color="6B7280")
-        if it.get("atribucion"):
-            meta += _run(f" · Dato: {it['atribucion']}", size=16, color="6B7280")
         if est:  # solo si hubo verificacion (modo con verificacion)
             meta += _run(" · Verificación: ", size=16, color="6B7280") + _run(est, bold=True, size=16, color=COLOR_ESTADO.get(est, COLOR_ESTADO[None]))
             if ver.get("detalle"):
                 meta += _run(f" ({ver['detalle']})", size=16, color="6B7280")
         out.append(_p(meta, before=40, after=20))
         for f in it.get("fuentes", []):
-            out.append(_p(_run(f"Fuente: {f.get('medio', '')} — {f.get('url', '')}", size=16, color="6B7280"), after=10))
+            out.append(_p(_run(f"Fuente interna (no citar): {f.get('medio', '')} — {f.get('url', '')}", size=16, color="6B7280"), after=10))
         if it.get("link_nota_nh"):
             out.append(_p(_run(f"Nota de No Huddle para linkear: {it['link_nota_nh']}", size=16, color="6B7280"), after=10))
         img = it.get("imagen") or {}

@@ -18,25 +18,37 @@ def _min(hhmm: str) -> int:
     return int(h) * 60 + int(m)
 
 
-_GENERICAS = {"sports", "news", "talk", "football", "pro", "the", "illustrated"}
+def _oraciones(t: str) -> List[str]:
+    return [o for o in re.split(r"(?<=[.!?])\s+", t) if o.strip()]
 
 
-def _nombra_fuente(texto_completo: str, medios, insiders, palabras_atribucion) -> bool:
-    """True si el texto menciona a un medio de sus fuentes (nombre, una palabra distintiva o siglas), a un insider o usa 'segun...'."""
-    bajo = texto_completo.lower()
-    if any(p in bajo for p in palabras_atribucion):
-        return True
-    for medio in medios:
-        palabras = [w for w in re.findall(r"[A-Za-z0-9]+", medio)]
-        candidatos = {medio.lower()} | {w.lower() for w in palabras if len(w) >= 3 and w.lower() not in _GENERICAS}
-        if len(palabras) > 1:
-            candidatos.add("".join(w[0] for w in palabras).lower())  # "Pro Football Talk" -> pft
-        if any(re.search(r"\b" + re.escape(c) + r"\b", bajo) for c in candidatos if c):
-            return True
+def _cita_fuentes(textos: List[str], reglas: dict, insiders: List[str], medios: List[str]) -> tuple:
+    """Detecta si el texto cita a un medio o insider. Devuelve (errores, avisos) como listas de mensajes.
+
+    - ERROR: 'segun...', 'de acuerdo con...', 'fuentes...' o el nombre de un insider (somos un medio: no citamos).
+    - AVISO: un medio nombrado junto a un verbo de atribucion ('ESPN informa...'); puede ser un falso positivo
+      (por ejemplo, un directivo de ESPN que habla), por eso no bloquea.
+    """
+    errores, avisos = [], []
+    unido = " ".join(textos)
+    bajo = unido.lower()
+    for p in reglas["palabras_cita"]:
+        if re.search(r"\b" + re.escape(p) + r"\b", bajo):
+            errores.append(f"cita una fuente ('{p}'): no se cita a nadie, se escribe como medio propio")
+            break
     for ins in insiders:
-        if ins.lower() in bajo or ins.split()[-1].lower() in bajo:
-            return True
-    return False
+        ultimo = ins.split()[-1]
+        if re.search(r"\b" + re.escape(ins) + r"\b", unido, re.I) or re.search(r"\b" + re.escape(ultimo) + r"\b", unido):
+            errores.append(f"nombra a un insider ({ins}): no se cita a nadie")
+            break
+    nombres = {m for m in medios if m}
+    for o in _oraciones(unido):
+        ob = o.lower()
+        for m in nombres:
+            if re.search(r"\b" + re.escape(m.lower()) + r"\b", ob) and any(re.search(r"\b" + v + r"\b", ob) for v in reglas["verbos_atribucion"]):
+                avisos.append(f"parece citar a {m} ('{o.strip()[:70]}'): revisar")
+                break
+    return errores, avisos
 
 
 def validar(
@@ -141,29 +153,26 @@ def validar(
                     err(et, "repetido", f"parecido a lo propuesto el {h.get('fecha')}: '{h.get('texto', '')[:60]}'")
                     break
 
-        # ---- fuentes y atribucion
+        # ---- fuentes (referencia interna: van en el Word, no en el texto)
         fuentes = it.get("fuentes")
         if not isinstance(fuentes, list) or not fuentes:
-            err(i, "fuentes", "falta al menos una fuente (medio + url)")
+            err(i, "fuentes", "falta al menos una fuente (medio + url) para la referencia interna")
             fuentes = []
         else:
             for f in fuentes:
                 if not (isinstance(f, dict) and f.get("medio") and str(f.get("url", "")).startswith("http")):
                     err(i, "fuentes", "cada fuente necesita 'medio' y 'url' (http...)")
                     break
-        medios = {f.get("medio") for f in fuentes if isinstance(f, dict) and f.get("medio")}
-        atr = it.get("atribucion")  # opcional en modo liviano
-        if atr is not None and atr not in ("confirmado", "reportado"):
-            err(i, "atribucion", "'atribucion' (opcional) debe ser 'confirmado' o 'reportado'")
-        elif atr == "confirmado" and reglas.get("exigir_doble_fuente") and len(medios) < reglas["min_medios_confirmado"]:
-            err(i, "doble_fuente", f"modo estricto: un hecho 'confirmado' necesita {reglas['min_medios_confirmado']} medios distintos (tiene {len(medios)})")
-        elif atr == "reportado" and not any(p in " ".join(textos).lower() for p in reglas["palabras_atribucion"]):
-            err(i, "atribucion", "es un dato 'reportado' pero el texto no nombra a quien lo reporta (segun / reporta / informo...)")
+        medios = [f.get("medio") for f in fuentes if isinstance(f, dict)]
+        if reglas.get("exigir_doble_fuente") and len({m for m in medios if m}) < reglas["min_medios_doble_fuente"]:
+            err(i, "doble_fuente", f"modo estricto: necesita {reglas['min_medios_doble_fuente']} medios distintos en 'fuentes'")
 
-        # En modo liviano la responsabilidad queda en el medio o insider: el texto tiene que nombrarlo.
-        if reglas.get("exigir_fuente_en_texto") and it.get("categoria") not in ("pregunta",):
-            if not _nombra_fuente(" ".join(textos), medios, insiders, reglas["palabras_atribucion"]):
-                avi(i, "fuente_en_texto", "el texto no nombra a su fuente (ESPN, CBS, Schefter, 'segun...'): agregarla")
+        # ---- no citar fuentes en el texto (somos un medio)
+        e_cita, a_cita = _cita_fuentes(textos, reglas, insiders, medios)
+        for m in e_cita:
+            err(i, "cita_en_texto", m)
+        for m in a_cita:
+            avi(i, "cita_en_texto", m)
 
         # ---- verificacion (opcional salvo modo estricto)
         ver = it.get("verificacion")
