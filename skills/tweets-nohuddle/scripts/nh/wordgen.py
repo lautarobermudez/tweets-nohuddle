@@ -61,7 +61,7 @@ def _cuerpo(tweets: dict, reglas: dict, avisos: Optional[List[dict]]) -> str:
     n_h = sum(1 for i in items if i["tipo"] == "hilo")
     out = [
         _p(_run("No Huddle · Tweets del día", bold=True, size=36, color="1F2937"), after=40),
-        _p(_run(f"{_fecha_larga(tweets['fecha'])} · Hora de Argentina · {n_t} tweets y {n_h} hilos", size=22, color="6B7280"), after=200),
+        _p(_run(f"{_fecha_larga(tweets['fecha'])} · Hora de Argentina · {n_t} {'tweet' if n_t == 1 else 'tweets'} y {n_h} {'hilo' if n_h == 1 else 'hilos'}", size=22, color="6B7280"), after=200),
     ]
 
     agenda = tweets.get("agenda") or []
