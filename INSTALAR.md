@@ -21,12 +21,13 @@ Es una vez y lleva 5 minutos. Después, cada mañana es un solo comando.
 3. Al final te dice dónde quedó el **Word**: carpeta `NoHuddle-Tweets/salida/AAAA-MM-DD/` dentro de tu carpeta de usuario.
 4. Abrí el Word, revisá cada recuadro y copialo a X. **Nada se publica solo.**
 
+**La primera vez** Claude Code te va a pedir permiso para escribir un archivo (`redaccion.txt`, dentro de `NoHuddle-Tweets`). Es esperable: es donde deja los textos antes de armar el Word. Aceptalo (si elegís "no volver a preguntar", las próximas veces no aparece). Los scripts de la skill no piden permiso.
+
 ## Cómo leer el Word
 - Cada publicación tiene **hora sugerida (hora de Argentina)**, tipo (tweet o hilo), la liga y la categoría.
 - Los tweets están escritos **en voz propia del medio: no citan a nadie**. Debajo de cada uno aparece **"Fuente interna (no citar)"** con el medio y el link: es solo para que vos sepas de dónde salió. Si es un rumor, el texto ya viene en condicional ("irían", "estarían").
 - Arriba, "Para revisar antes de publicar" junta los avisos del día.
 - **Imagen sugerida:** usá primero las fotos de la biblioteca de No Huddle; si usás otra, poné el crédito y chequeá los derechos.
-- Si alguna vez querés que se **verifiquen los datos a fondo**, pedilo así: `/tweets-nohuddle con verificación` (gasta bastantes más tokens).
 
 ## Si algo no anda
 | Síntoma | Qué hacer |
@@ -35,4 +36,5 @@ Es una vez y lleva 5 minutos. Después, cada mañana es un solo comando.
 | "No hay Python" | Instalá Python (python.org) y repetí la instalación |
 | Salieron pocos tweets | Puede pasar si ese día hubo poca novedad en los medios; prefiere pocos antes que rellenar |
 | Un medio no se pudo leer | Es normal (a veces bloquean); la skill sigue con los demás y te avisa cuál faltó |
+| Se preparó antes de medianoche y se cerró después | No pasa nada: `cerrar` usa el último plan preparado (de hoy o de ayer) |
 | Querés actualizar la skill | Reemplazá la carpeta por la nueva y corré `python instalar.py --actualizar` |

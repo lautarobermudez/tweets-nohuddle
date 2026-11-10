@@ -65,6 +65,7 @@ def preparar(
     if not reutilizado:  # el plan solo se rehace si no hay una redaccion en curso que dependa de el
         rutas.guardar_json(carpeta / "plan.json", esqueleto)
     plan_actual = rutas.cargar_json(carpeta / "plan.json")
+    rutas.guardar_json(rutas.ultimo_plan_path(), {"fecha": fecha})  # para que `cerrar` encuentre este plan aunque pase la medianoche
 
     estilo = (rutas.SKILL_DIR / "references" / "estilo_tweets.md").read_text(encoding="utf-8")
     brief = _brief(fecha, ruta_red, plan_actual, digest_txt, estilo, reutilizado)
@@ -106,7 +107,7 @@ def cerrar(ruta: Optional[Path] = None, forzar: bool = False) -> dict:
     """
     reglas = rutas.cargar_reglas()
     insiders = rutas.cargar_fuentes().get("insiders", [])
-    ruta = Path(ruta) if ruta else rutas.dia_dir(rutas.hoy_ar().isoformat()) / "redaccion.txt"
+    ruta = Path(ruta) if ruta else rutas.dia_dir(_fecha_a_cerrar()) / "redaccion.txt"
     carpeta = ruta.parent
     problemas = []
     if ruta.suffix == ".txt" and ruta.exists():
@@ -144,6 +145,19 @@ def cerrar(ruta: Optional[Path] = None, forzar: bool = False) -> dict:
         historial.agregar(tweets)
     resultado["word"] = destino
     return resultado
+
+
+def _fecha_a_cerrar() -> str:
+    """La fecha del ultimo plan preparado (si es de hoy o de ayer); si no, hoy.
+
+    Asi, si se prepara a las 23:50 y se cierra a las 00:10, `cerrar` sigue encontrando la redaccion.
+    """
+    hoy = rutas.hoy_ar()
+    try:
+        fecha = date.fromisoformat(rutas.cargar_json(rutas.ultimo_plan_path())["fecha"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return hoy.isoformat()
+    return fecha.isoformat() if 0 <= (hoy - fecha).days <= 1 else hoy.isoformat()
 
 
 def _tabla(tweets: dict) -> list:

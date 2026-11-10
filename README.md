@@ -34,19 +34,19 @@ tweets.py cerrar     (script)
 - `disable-model-invocation: true`: se invoca a mano, así que **su descripción no ocupa contexto en ninguna conversación**.
 - `model: sonnet` y `effort: medium`: el modelo que redacta es más barato que el de la sesión; la decisión difícil ya la tomó el código.
 - `allowed-tools` con `${CLAUDE_SKILL_DIR}`: los scripts corren sin pedir permiso.
-- Divulgación progresiva: `SKILL.md` corto; la guía de estilo y las instrucciones las imprime el script en el momento justo; los modos caros están en `references/opcional/`; los scripts **se ejecutan, no se cargan** en contexto.
+- Divulgación progresiva: `SKILL.md` corto; la guía de estilo y las instrucciones las imprime el script en el momento justo; los scripts **se ejecutan, no se cargan** en contexto.
 - Solo funciona en **Claude Code** (los campos `model`, `effort` y `disable-model-invocation` no los acepta claude.ai ni la API de Skills).
 
-**Modos opcionales** (solo a pedido, `references/opcional/`): *con verificación* (subagente independiente, ~70.000 tokens por ronda) y *profundo* (buscadores que abren las notas). Reglas estrictas en `config/reglas.json`.
+**Sin modos opcionales (v4.1, 10/11):** los modos *con verificación* y *profundo* de la v1 se sacaron por decisión de Lautaro: habían quedado desfasados del flujo actual (el verificador pedía nombrar la fuente, y el buscador no se conectaba con los IDs del digest). Si algún día hace falta verificar, se diseña de nuevo sobre `redaccion.txt`.
 
 ## Estructura
 ```
 skills/tweets-nohuddle/
-  SKILL.md                 mínimo: 2 comandos y 3 reglas (35 líneas)
+  SKILL.md                 mínimo: 2 comandos y 3 reglas
   config/fuentes.json      medios, feeds, insiders (editable)
   config/reglas.json       límites, reglas de validación y PLAN DIARIO (mezcla y horarios) (editable)
-  references/              guía de estilo (la imprime `preparar`) y formato; opcional/ = prompts de verificador y buscadores
-  scripts/tweets.py        CLI: preparar | cerrar (flujo normal); doctor | hoy | fuentes | validar | word | historial | fusionar (sueltos)
+  references/              guía de estilo (la imprime `preparar`) y formato de la redacción
+  scripts/tweets.py        CLI: preparar | cerrar (flujo normal); doctor | hoy | fuentes | validar | word | historial (sueltos)
   scripts/nh/              un módulo por responsabilidad (solo stdlib, Python 3.8+):
                              flujo.py      orquesta preparar y cerrar
                              fuentes.py    lee y agrupa los medios         rss.py       descarga y parsea feeds
@@ -54,15 +54,15 @@ skills/tweets-nohuddle/
                              redaccion.py  formato compacto -> tweets.json  validar.py   reglas de validación
                              wordgen.py    el Word                          historial.py memoria entre días
                              tiempo.py     hora de Argentina                texto.py     utilidades de texto
-                             rutas.py      configuración y carpetas         verificacion.py modo opcional
-tests/                     91 tests (unittest)
+                             rutas.py      configuración y carpetas
+tests/                     86 tests (unittest)
 instalar.py                instalador (Windows/Mac/Linux)
 ```
 
 ## Decisiones de ingeniería
 - **Sin dependencias:** solo la biblioteca estándar. El Word se arma a mano (un .docx es un zip de XML) para no pedirle instalar nada a quien la usa.
 - **Tolerante a fallos:** un feed caído no frena la corrida; queda anotado en el digest.
-- **Contrato explícito:** `references/formato_tweets.md` define el JSON entre el agente y los scripts; si no cumple, el validador lo dice con un mensaje claro.
+- **Contrato explícito:** `references/formato_tweets.md` define el formato de `redaccion.txt` entre el agente y los scripts; si no cumple, el validador lo dice con un mensaje claro.
 - **Skill delgada, scripts gruesos:** la lógica determinista (fuentes, plan, validación, Word, historial) vive en código con tests; el `SKILL.md` solo dice qué dos comandos correr. Las instrucciones que necesita el agente las imprime el script en el momento justo (en vez de cargarlas todas de antemano).
 - **Costo controlado:** el script resume los datos (digest de ~2.200 tokens en vez de 156 KB) y el agente no abre notas ni lanza subagentes salvo que se le pida.
 - **Idempotente:** correr dos veces el mismo día reemplaza la corrida en el historial, no la duplica. Escrituras atómicas.

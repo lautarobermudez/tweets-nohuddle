@@ -31,10 +31,6 @@
       "imagen": {
         "sugerencia": "Foto de Jacobs en acción",
         "credito": "AP"
-      },
-      "verificacion": {
-        "estado": "OK",
-        "detalle": ""
       }
     },
     {
@@ -52,11 +48,7 @@
           "medio": "CBS Sports",
           "url": "https://www.cbssports.com/nfl/news/jessie-bates-trade"
         }
-      ],
-      "verificacion": {
-        "estado": "REVISAR",
-        "detalle": "falta segunda fuente"
-      }
+      ]
     },
     {
       "id": "h1",
@@ -79,10 +71,7 @@
           "medio": "CBS Sports",
           "url": "https://www.cbssports.com/nfl/news/x"
         }
-      ],
-      "verificacion": {
-        "estado": "OK"
-      }
+      ]
     }
   ]
 }

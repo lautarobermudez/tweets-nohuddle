@@ -13,7 +13,6 @@ from xml.sax.saxutils import escape
 from . import texto
 
 DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
-COLOR_ESTADO = {"OK": "2E7D32", "REVISAR": "B26A00", "ERROR": "C62828", None: "6B7280"}
 CATEGORIA = {
     "resultado": "Resultado", "lesion": "Lesión", "transaccion": "Transacción", "college": "College",
     "dato": "Dato", "previa": "Previa", "analisis": "Análisis", "pregunta": "Pregunta",
@@ -90,14 +89,8 @@ def _cuerpo(tweets: dict, reglas: dict, avisos: Optional[List[dict]]) -> str:
             cuerpo.append(_p(_run(t, size=22), after=100 if n < len(it["textos"]) else 0))
         out.append(_caja(cuerpo))
 
-        ver = it.get("verificacion") or {}
-        est = ver.get("estado")
         largos = " / ".join(str(texto.largo_x(t, reglas["largo_url"])) for t in it["textos"])
         meta = _run(f"Caracteres: {largos} de {reglas['max_caracteres']}", size=16, color="6B7280")
-        if est:  # solo si hubo verificacion (modo con verificacion)
-            meta += _run(" · Verificación: ", size=16, color="6B7280") + _run(est, bold=True, size=16, color=COLOR_ESTADO.get(est, COLOR_ESTADO[None]))
-            if ver.get("detalle"):
-                meta += _run(f" ({ver['detalle']})", size=16, color="6B7280")
         out.append(_p(meta, before=40, after=20))
         for f in it.get("fuentes", []):
             out.append(_p(_run(f"Fuente interna (no citar): {f.get('medio', '')} — {f.get('url', '')}", size=16, color="6B7280"), after=10))

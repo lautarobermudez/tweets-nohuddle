@@ -1,6 +1,6 @@
 {
   "_comentario": "Reglas que validan los scripts. Cambiar aca, no en el codigo.",
-  "version": "3.0.0",
+  "version": "4.1.0",
   "zona_horaria": "America/Argentina/Buenos_Aires",
   "max_caracteres": 280,
   "largo_url": 23,
@@ -71,14 +71,7 @@
     "NFL",
     "College"
   ],
-  "estados_verificacion": [
-    "OK",
-    "REVISAR",
-    "ERROR"
-  ],
-  "_modo": "MODO LIVIANO (por defecto): se confia en la curaduria de los medios prestigiosos y los insiders; no se exige doble fuente ni verificador. Los tweets NO citan fuentes en el texto (somos un medio): la fuente queda solo en el Word como referencia interna.",
-  "exigir_doble_fuente": false,
-  "verificacion_obligatoria": false,
+  "_modo": "Se confia en la curaduria de los medios prestigiosos y los insiders: sin verificador ni doble fuente. Los tweets NO citan fuentes en el texto (somos un medio): la fuente queda solo en el Word como referencia interna.",
   "digest": {
     "max_historias_nfl": 14,
     "max_historias_college": 8,
@@ -86,7 +79,6 @@
     "horas_partidos": 40,
     "max_partidos_por_liga": 12
   },
-  "min_medios_doble_fuente": 2,
   "palabras_cita": [
     "según",
     "segun",

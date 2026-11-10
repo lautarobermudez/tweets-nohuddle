@@ -4,8 +4,7 @@ import unittest
 from tests import base
 from nh import rutas, validar
 
-REGLAS = rutas.cargar_reglas()  # modo liviano (por defecto)
-ESTRICTAS = dict(REGLAS, exigir_doble_fuente=True, verificacion_obligatoria=True)
+REGLAS = rutas.cargar_reglas()
 INSIDERS = rutas.cargar_fuentes()["insiders"]
 
 
@@ -34,28 +33,16 @@ class TestValidar(unittest.TestCase):
         self.t["items"][0]["textos"][0] = "Se lesionó [jugador] hoy"
         self.assertIn("corchetes", reglas_de(v(self.t)))
 
-    def test_modo_liviano_no_exige_doble_fuente(self):
+    def test_no_exige_doble_fuente(self):
         self.t["items"][0]["fuentes"] = self.t["items"][0]["fuentes"][:1]
         self.assertNotIn("doble_fuente", reglas_de(v(self.t)))
         self.assertEqual(v(self.t)["errores"], [])
 
-    def test_modo_estricto_exige_dos_medios_distintos(self):
-        self.t["items"][0]["fuentes"] = self.t["items"][0]["fuentes"][:1]
-        self.assertIn("doble_fuente", reglas_de(v(self.t, reglas=ESTRICTAS)))
-
-    def test_modo_estricto_mismo_medio_dos_veces_no_cuenta_doble(self):
-        it = self.t["items"][0]
-        it["fuentes"] = [{"medio": "ESPN", "url": "https://a"}, {"medio": "ESPN", "url": "https://b"}]
-        self.assertIn("doble_fuente", reglas_de(v(self.t, reglas=ESTRICTAS)))
-
-    def test_sin_atribucion_ni_verificacion_es_valido_en_modo_liviano(self):
+    def test_sin_atribucion_es_valido(self):
         for it in self.t["items"]:
             it.pop("atribucion", None)
-            it.pop("verificacion", None)
         res = v(self.t)
         self.assertEqual(res["errores"], [])
-        self.assertNotIn("verificacion", reglas_de(res, "avisos"))  # no molesta con 'sin verificar'
-        self.assertIn("verificacion", reglas_de(v(self.t, reglas=ESTRICTAS), "avisos"))
 
     def _con_texto(self, texto):
         self.t["items"][0]["textos"] = [texto]
@@ -89,12 +76,6 @@ class TestValidar(unittest.TestCase):
         errores, avisos = self._con_texto("ESPN informa que Josh Jacobs se opera de un dedo.")
         self.assertEqual(errores, [])
         self.assertIn("cita_en_texto", avisos)
-
-    def test_verificador_error_bloquea_y_revisar_avisa(self):
-        self.t["items"][0]["verificacion"] = {"estado": "ERROR", "detalle": "marcador mal"}
-        self.assertIn("verificacion", reglas_de(v(self.t)))
-        t2 = base.tweets_ok()
-        self.assertIn("verificacion", reglas_de(v(t2), "avisos"))  # el t2 trae REVISAR (sigue avisando si hay verificador)
 
     def test_hilo_con_un_solo_post(self):
         self.t["items"][2]["textos"] = ["solo uno"]

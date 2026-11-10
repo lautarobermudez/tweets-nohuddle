@@ -164,8 +164,6 @@ def validar(
                     err(i, "fuentes", "cada fuente necesita 'medio' y 'url' (http...)")
                     break
         medios = [f.get("medio") for f in fuentes if isinstance(f, dict)]
-        if reglas.get("exigir_doble_fuente") and len({m for m in medios if m}) < reglas["min_medios_doble_fuente"]:
-            err(i, "doble_fuente", f"modo estricto: necesita {reglas['min_medios_doble_fuente']} medios distintos en 'fuentes'")
 
         # ---- no citar fuentes en el texto (somos un medio)
         e_cita, a_cita = _cita_fuentes(textos, reglas, insiders, medios)
@@ -173,19 +171,6 @@ def validar(
             err(i, "cita_en_texto", m)
         for m in a_cita:
             avi(i, "cita_en_texto", m)
-
-        # ---- verificacion (opcional salvo modo estricto)
-        ver = it.get("verificacion")
-        if ver is not None:
-            est = ver.get("estado") if isinstance(ver, dict) else None
-            if est not in reglas["estados_verificacion"]:
-                err(i, "verificacion", f"'verificacion.estado' debe ser uno de {reglas['estados_verificacion']}")
-            elif est == "ERROR":
-                err(i, "verificacion", "el verificador marco un ERROR de dato: corregir o descartar")
-            elif est == "REVISAR":
-                avi(i, "verificacion", "el verificador pide revisar: " + str(ver.get("detalle", ""))[:120])
-        elif reglas.get("verificacion_obligatoria"):
-            avi(i, "verificacion", "sin verificar")
 
     # ---- cantidad total
     c = reglas["cantidad"]

@@ -5,11 +5,10 @@ FLUJO NORMAL (son los dos unicos comandos que usa el agente):
   python tweets.py preparar [--todo-el-dia] [--nuevo]   # chequea, junta medios, arma digest y plan del dia; imprime todo lo que el agente necesita
   python tweets.py cerrar [redaccion.txt|tweets.json] [--forzar]   # valida, arma el Word, actualiza el historial e imprime el resumen final
 
-COMANDOS SUELTOS (para depurar o para los modos opcionales):
+COMANDOS SUELTOS (para depurar):
   python tweets.py doctor [--red]                      # chequea que todo este listo para correr
   python tweets.py hoy                                 # fecha de hoy en Argentina (AAAA-MM-DD)
   python tweets.py fuentes [--horas 36] [--salida X]   # junta titulares de los medios -> candidatos.json
-  python tweets.py fusionar tweets.json verificacion.json   # pasa el veredicto del verificador a cada tweet
   python tweets.py validar tweets.json [--titulares candidatos.json]
   python tweets.py word tweets.json [--forzar]         # valida y arma el Word; registra en el historial
   python tweets.py historial                           # muestra lo ya propuesto en los ultimos dias
@@ -27,7 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from nh import fuentes as nh_fuentes  # noqa: E402
-from nh import flujo, historial, rss, rutas, validar, verificacion, wordgen  # noqa: E402
+from nh import flujo, historial, rss, rutas, validar, wordgen  # noqa: E402
 
 
 def _imprimir(res: dict) -> None:
@@ -132,24 +131,6 @@ def cmd_word(a) -> int:
     return 1 if res["errores"] else 0
 
 
-def cmd_fusionar(a) -> int:
-    ruta = Path(a.tweets)
-    tweets = rutas.cargar_json(ruta)
-    veredictos = rutas.cargar_json(Path(a.verificacion))
-    if not isinstance(veredictos, list):
-        raise ValueError("el archivo de verificacion debe ser una lista")
-    tweets, problemas = verificacion.fusionar(tweets, veredictos)
-    rutas.guardar_json(ruta, tweets)
-    cuentas = {}
-    for it in tweets["items"]:
-        e = it["verificacion"]["estado"]
-        cuentas[e] = cuentas.get(e, 0) + 1
-    print("Verificacion fusionada: " + ", ".join(f"{k}={v}" for k, v in sorted(cuentas.items())))
-    for p in problemas:
-        print("  aviso:", p)
-    return 0
-
-
 def cmd_hoy(a) -> int:
     print(rutas.hoy_ar().isoformat())
     return 0
@@ -212,7 +193,6 @@ def main(argv=None) -> int:
     v = sub.add_parser("validar"); v.add_argument("tweets"); v.add_argument("--titulares"); v.set_defaults(f=cmd_validar)
     w = sub.add_parser("word"); w.add_argument("tweets"); w.add_argument("--titulares"); w.add_argument("--salida"); w.add_argument("--forzar", action="store_true"); w.set_defaults(f=cmd_word)
     sub.add_parser("hoy").set_defaults(f=cmd_hoy)
-    m = sub.add_parser("fusionar"); m.add_argument("tweets"); m.add_argument("verificacion"); m.set_defaults(f=cmd_fusionar)
     h = sub.add_parser("historial"); h.add_argument("--dias", type=int, default=7); h.add_argument("--hasta"); h.set_defaults(f=cmd_historial)
     a = p.parse_args(argv)
     try:

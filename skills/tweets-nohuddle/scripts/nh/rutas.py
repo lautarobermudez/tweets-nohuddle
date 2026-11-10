@@ -27,6 +27,10 @@ def dia_dir(fecha: str) -> Path:
     return work_dir() / "salida" / fecha
 
 
+def ultimo_plan_path() -> Path:
+    return work_dir() / "ultimo_plan.json"
+
+
 def historial_path() -> Path:
     return work_dir() / "historial.json"
 

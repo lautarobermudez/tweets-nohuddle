@@ -5,7 +5,8 @@ import json
 import os
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from unittest import mock
 from pathlib import Path
 
 from tests import base
@@ -134,6 +135,13 @@ class TestPreparar(ConCarpeta):
 
 
 class TestCerrar(ConCarpeta):
+    def setUp(self):
+        super().setUp()
+        # `cerrar` usa la fecha real de Argentina: se fija al dia del plan para que los tests no dependan del reloj.
+        self.hoy = mock.patch.object(rutas, "hoy_ar", return_value=date(2026, 11, 9))
+        self.hoy.start()
+        self.addCleanup(self.hoy.stop)
+
     def _preparado(self, redaccion_txt):
         r = flujo.preparar(fetch=fetch_falso, ahora=self.AHORA, todo_el_dia=True)
         r["redaccion"].write_text(redaccion_txt, encoding="utf-8")
@@ -192,6 +200,19 @@ class TestCerrar(ConCarpeta):
         self._preparado("# solo comentarios\n")
         with self.assertRaises(flujo.FlujoError):
             flujo.cerrar()
+
+    def test_cierra_el_plan_de_ayer_si_paso_la_medianoche(self):
+        self._preparado("t1 | N1 | Josh Jacobs se opera de un dedo y no hay fecha de regreso.")
+        with mock.patch.object(rutas, "hoy_ar", return_value=date(2026, 11, 10)):
+            out = flujo.cerrar()
+        self.assertIsNotNone(out["word"])
+        self.assertIn("2026-11-09", str(out["word"]))
+
+    def test_un_plan_viejo_no_se_vuelve_a_cerrar(self):
+        self._preparado("t1 | N1 | Josh Jacobs se opera de un dedo y no hay fecha de regreso.")
+        with mock.patch.object(rutas, "hoy_ar", return_value=date(2026, 11, 12)):
+            with self.assertRaises(flujo.FlujoError):
+                flujo.cerrar()
 
     def test_sin_preparar_antes(self):
         with self.assertRaises(flujo.FlujoError):

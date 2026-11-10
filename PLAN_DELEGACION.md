@@ -1,6 +1,8 @@
 # Plan de delegación: `/tweets-nohuddle` (2026-11-09, v4)
 
 > **Cambio v4 (09/11 noche):** auditoría contra la documentación oficial de skills. La skill se invoca a mano (`disable-model-invocation`), fija `model: sonnet` y `effort: medium`, y el modelo escribe un formato compacto (`id | historias | texto`) en vez de un JSON con URLs: los IDs de historia los resuelve el script. Costo medido ~4.500 tokens por corrida.
+
+> **Cambio v4.1 (10/11):** revisión con Opus 5.5. Se sacaron los modos opcionales (verificador y buscadores de la v1), que habían quedado desfasados del flujo de la v3/v4. `cerrar` ahora encuentra el plan aunque se pase la medianoche (`ultimo_plan.json`). Versión 4.1.0 en `config/reglas.json`.
 >
 > **Cambio v3 (09/11 noche):** (1) los tweets **no citan fuentes** en el texto (somos un medio); (2) la lógica pasa a scripts: el `SKILL.md` queda en 2 comandos (`preparar`, `cerrar`) y el plan del día (mezcla y horarios) lo decide código.
 >
@@ -19,10 +21,10 @@
 | Redactar cada tweet/hilo con el tono de la cuenta | Aumentación (única parte con el modelo; 1 pasada, ~500 tokens de salida, leyendo solo el digest) | Es criterio y estilo | Guía de estilo corta + el compañero edita |
 | No citar fuentes; rumores en condicional | Regla de redacción + **error de validación** | Somos un medio | `según…`, `fuentes…` e insiders bloquean el Word |
 | Validar, armar el Word, historial, resumen final | Automatización (`tweets.py cerrar`) | Determinista | 280 caracteres, repetidos, tono, horarios |
-| Verificación independiente de datos | **Opcional**, solo a pedido | Costosa y redundante con la curaduría de los medios | Modo "con verificación" |
+| Verificación independiente de datos | **No se hace** (sacada en v4.1) | Costosa y redundante con la curaduría de los medios | — |
 | Revisar, ajustar y publicar | **Humano** | Publica con la voz de la cuenta | Solo el compañero |
 
 **Descripción:** las reglas viven en `references/` y `config/` (editables sin tocar código).
-**Discernimiento:** la corrida salió bien si el compañero publica la mayoría sin reescribir y ningún tweet afirma algo que el medio citado no dijo. Se revisa con una muestra semanal; si aparecen errores, se enciende el modo con verificación.
+**Discernimiento:** la corrida salió bien si el compañero publica la mayoría sin reescribir y ningún tweet afirma algo que el medio citado no dijo. Se revisa con una muestra semanal; si aparecen errores, se diseña una verificación nueva sobre `redaccion.txt`.
 **Diligencia:** responde quien publica. Cada ítem guarda su fuente como referencia interna (aparece en el Word, no en el tweet) y los rumores van en condicional; el historial evita repetir 7 días. **Riesgo asumido por Lautaro:** al no citar ni verificar, un dato mal resumido o un rumor afirmado sale con la voz del medio; por eso el compañero es la última barrera.
 **Hoy / después:** hoy, flujo completo con Word. Después: imágenes, métricas de qué rindió, programación por API (requiere plan pago de X), y sumar medios con feed propio.
